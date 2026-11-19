@@ -1,0 +1,216 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Reusable Primitives & Validation Helpers
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isValidDeepLearningLevel(val) {
+      return val in ['Sangat Terlihat', 'Terlihat', 'Cukup', 'Belum Terlihat'];
+    }
+
+    function isValidDeepLearningMap(dl) {
+      return dl is map
+        && dl.keys().hasAll(['mindful', 'meaningful', 'joyful'])
+        && dl.keys().hasOnly(['mindful', 'meaningful', 'joyful'])
+        && isValidDeepLearningLevel(dl.mindful)
+        && isValidDeepLearningLevel(dl.meaningful)
+        && isValidDeepLearningLevel(dl.joyful);
+    }
+
+    function isValidKehadiranMap(k) {
+      return k is map
+        && k.keys().hasAll(['hadir', 'sakit', 'izin', 'alpa', 'total'])
+        && k.keys().hasOnly(['hadir', 'sakit', 'izin', 'alpa', 'total', 'keterangan'])
+        && k.hadir is number && k.hadir >= 0 && k.hadir <= 500
+        && k.sakit is number && k.sakit >= 0 && k.sakit <= 500
+        && k.izin is number && k.izin >= 0 && k.izin <= 500
+        && k.alpa is number && k.alpa >= 0 && k.alpa <= 500
+        && k.total is number && k.total >= 0 && k.total <= 500
+        && isValidOptionalString(k, 'keterangan', 500);
+    }
+
+    function isValidRefleksiMap(r) {
+      return r is map
+        && r.keys().hasAll(['ketercapaian', 'kendala', 'tindak_lanjut', 'catatan_guru', 'narasi_refleksi'])
+        && r.keys().hasOnly(['ketercapaian', 'kendala', 'tindak_lanjut', 'catatan_guru', 'narasi_refleksi'])
+        && r.ketercapaian in ['Sangat Baik', 'Baik', 'Cukup', 'Perlu Tindak Lanjut']
+        && isValidString(r.kendala, 0, 500)
+        && isValidString(r.tindak_lanjut, 0, 500)
+        && isValidString(r.catatan_guru, 0, 2000)
+        && isValidString(r.narasi_refleksi, 0, 4000);
+    }
+
+    function isValidJurnal(data) {
+      return data.keys().hasAll([
+          'id', 'timestamp', 'tanggal', 'guru_nip', 'guru_nama',
+          'mapel', 'kelas', 'materi', 'kehadiran', 'aktivitas',
+          'deep_learning', 'refleksi', 'dokumentasi', 'status', 'qr_token'
+        ])
+        && data.keys().hasOnly([
+          'id', 'timestamp', 'tanggal', 'jadwal_id', 'guru_nip', 'guru_nama',
+          'mapel', 'kelas', 'materi', 'cp', 'tp', 'atp', 'kehadiran', 'aktivitas',
+          'deep_learning', 'refleksi', 'dokumentasi', 'status', 'catatan_supervisi',
+          'supervisi_deep_learning', 'tanggal_validasi', 'validator_nama',
+          'qr_token', 'last_saved_by', '_syncedAt'
+        ])
+        && isValidId(data.id)
+        && isValidString(data.timestamp, 1, 64)
+        && data.tanggal is string && data.tanggal.size() == 10 && data.tanggal.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && isValidOptionalString(data, 'jadwal_id', 100)
+        && isValidString(data.guru_nip, 1, 32)
+        && isValidString(data.guru_nama, 1, 200)
+        && isValidString(data.mapel, 1, 200)
+        && isValidString(data.kelas, 1, 100)
+        && isValidString(data.materi, 1, 2000)
+        && isValidOptionalString(data, 'cp', 4000)
+        && isValidOptionalString(data, 'tp', 4000)
+        && isValidOptionalString(data, 'atp', 4000)
+        && isValidKehadiranMap(data.kehadiran)
+        && data.aktivitas is list
+        && data.aktivitas.size() <= 15
+        && (data.aktivitas.size() == 0 || isValidString(data.aktivitas[0], 0, 100))
+        && isValidDeepLearningMap(data.deep_learning)
+        && isValidRefleksiMap(data.refleksi)
+        && data.dokumentasi is list
+        && data.dokumentasi.size() <= 5
+        && (data.dokumentasi.size() == 0 || isValidString(data.dokumentasi[0], 0, 2000))
+        && data.status in ['Draft', 'Menunggu Validasi', 'Disetujui', 'Revisi']
+        && isValidOptionalString(data, 'catatan_supervisi', 2000)
+        && (!('supervisi_deep_learning' in data) || isValidDeepLearningMap(data.supervisi_deep_learning))
+        && isValidOptionalString(data, 'tanggal_validasi', 64)
+        && isValidOptionalString(data, 'validator_nama', 200)
+        && isValidString(data.qr_token, 1, 256)
+        && isValidOptionalString(data, 'last_saved_by', 64)
+        && isValidOptionalString(data, '_syncedAt', 64);
+    }
+
+    function isValidUser(data) {
+      return !('password' in data.keys())
+        && data.keys().hasAll(['id', 'username', 'nama', 'role', 'nip'])
+        && data.keys().hasOnly([
+          'id', 'kode_guru', 'username', 'nama', 'gelar', 'email',
+          'role', 'nip', 'avatar', 'mapel_diampu', 'jurusan', '_updatedAt'
+        ])
+        && isValidId(data.id)
+        && (!('kode_guru' in data) || (data.kode_guru is number && data.kode_guru >= 0 && data.kode_guru <= 9999))
+        && isValidString(data.username, 1, 100)
+        && isValidString(data.nama, 1, 200)
+        && isValidOptionalString(data, 'gelar', 100)
+        && isValidOptionalString(data, 'email', 200)
+        && data.role in ['guru', 'kepsek', 'admin']
+        && isValidString(data.nip, 1, 32)
+        && isValidOptionalString(data, 'avatar', 2000)
+        && (!('mapel_diampu' in data) || (data.mapel_diampu is list && data.mapel_diampu.size() <= 30 && (data.mapel_diampu.size() == 0 || isValidString(data.mapel_diampu[0], 0, 100))))
+        && (!('jurusan' in data) || (data.jurusan is list && data.jurusan.size() <= 20 && (data.jurusan.size() == 0 || isValidString(data.jurusan[0], 0, 100))))
+        && isValidOptionalString(data, '_updatedAt', 64);
+    }
+
+    function isValidConfig(data) {
+      return data.keys().hasAll(['sekolah', 'kepala_sekolah', 'nip_kepala_sekolah'])
+        && data.keys().hasOnly([
+          'sekolah', 'kepala_sekolah', 'nip_kepala_sekolah',
+          'logo_url', 'logo_jatim_url', 'qr_code_ttd_url',
+          'gas_web_app_url', 'spreadsheet_id', 'lock_timeout_ms',
+          'tahun_ajaran', 'semester', '_updatedAt'
+        ])
+        && isValidString(data.sekolah, 1, 200)
+        && isValidString(data.kepala_sekolah, 1, 200)
+        && isValidString(data.nip_kepala_sekolah, 1, 32)
+        && isValidOptionalString(data, 'logo_url', 350000)
+        && isValidOptionalString(data, 'logo_jatim_url', 350000)
+        && isValidOptionalString(data, 'qr_code_ttd_url', 350000)
+        && isValidOptionalString(data, 'gas_web_app_url', 500)
+        && isValidOptionalString(data, 'spreadsheet_id', 200)
+        && (!('lock_timeout_ms' in data) || (data.lock_timeout_ms is number && data.lock_timeout_ms >= 1000 && data.lock_timeout_ms <= 120000))
+        && isValidOptionalString(data, 'tahun_ajaran', 50)
+        && isValidOptionalString(data, 'semester', 30)
+        && isValidOptionalString(data, '_updatedAt', 64);
+    }
+
+    // 3. Koleksi Jurnal KBM Guru SMKN 1 Sidayu
+    match /jurnals/{jurnalId} {
+      allow get: if isValidId(jurnalId);
+      allow list: if resource.data.id is string
+        && resource.data.status in ['Draft', 'Menunggu Validasi', 'Disetujui', 'Revisi'];
+
+      allow create: if isValidId(jurnalId)
+        && incoming().id == jurnalId
+        && isValidJurnal(incoming());
+
+      allow update: if isValidId(jurnalId)
+        && incoming().id == existing().id
+        && (incoming().guru_nip == existing().guru_nip || existing().guru_nip.matches('.*[^0-9\\-].*'))
+        && isValidJurnal(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'timestamp', 'tanggal', 'jadwal_id', 'guru_nip', 'guru_nama', 'mapel', 'kelas',
+          'materi', 'cp', 'tp', 'atp', 'kehadiran', 'aktivitas', 'deep_learning',
+          'refleksi', 'dokumentasi', 'status', 'catatan_supervisi',
+          'supervisi_deep_learning', 'tanggal_validasi', 'validator_nama',
+          'qr_token', 'last_saved_by', '_syncedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // 4. Koleksi Profil Dewan Guru & Pimpinan (Tanpa Password)
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if resource.data.id is string && resource.data.role in ['guru', 'kepsek', 'admin'];
+
+      allow create: if isValidId(userId)
+        && incoming().id == userId
+        && isValidUser(incoming());
+
+      allow update: if isValidId(userId)
+        && incoming().id == existing().id
+        && isValidUser(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'kode_guru', 'username', 'nama', 'gelar', 'email', 'role', 'nip',
+          'avatar', 'mapel_diampu', 'jurusan', '_updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // 5. Konfigurasi Aplikasi & Tautan Spreadsheet
+    match /config/{configId} {
+      allow get: if configId == 'main';
+      allow list: if false;
+
+      allow create, update: if configId == 'main'
+        && isValidConfig(incoming());
+
+      allow delete: if false;
+    }
+
+    // 6. Dokumen Tes Koneksi Boot
+    match /test/{docId} {
+      allow get: if isValidId(docId);
+      allow list, write: if false;
+    }
+  }
+}

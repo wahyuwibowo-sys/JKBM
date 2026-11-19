@@ -1,0 +1,211 @@
+{
+  "entities": {
+    "JurnalPembelajaran": {
+      "title": "JurnalPembelajaran",
+      "description": "Dokumen jurnal kegiatan belajar mengajar (KBM) harian guru SMKN 1 Sidayu dengan pendekatan pembelajaran mendalam dan presensi siswa",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID unik jurnal (e.g. JRN-20261118-G59-K8X2P)",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64
+        },
+        "tanggal": {
+          "type": "string",
+          "description": "Tanggal KBM (YYYY-MM-DD)",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "jadwal_id": {
+          "type": "string",
+          "description": "ID jadwal mengajar",
+          "maxLength": 100
+        },
+        "guru_nip": {
+          "type": "string",
+          "description": "NIP guru pengampu (tanpa spasi)",
+          "maxLength": 32
+        },
+        "guru_nama": {
+          "type": "string",
+          "description": "Nama lengkap beserta gelar guru pengampu",
+          "maxLength": 200
+        },
+        "mapel": {
+          "type": "string",
+          "description": "Nama mata pelajaran",
+          "maxLength": 200
+        },
+        "kelas": {
+          "type": "string",
+          "description": "Rombongan belajar / kelas",
+          "maxLength": 100
+        },
+        "materi": {
+          "type": "string",
+          "description": "Materi pokok pembelajaran",
+          "maxLength": 2000
+        },
+        "cp": {
+          "type": "string",
+          "description": "Capaian Pembelajaran",
+          "maxLength": 4000
+        },
+        "tp": {
+          "type": "string",
+          "description": "Tujuan Pembelajaran",
+          "maxLength": 4000
+        },
+        "atp": {
+          "type": "string",
+          "description": "Alur Tujuan Pembelajaran",
+          "maxLength": 4000
+        },
+        "kehadiran": {
+          "type": "object",
+          "description": "Rekapitulasi kehadiran siswa per pertemuan"
+        },
+        "aktivitas": {
+          "type": "array",
+          "description": "Daftar metode aktivitas belajar (maks 15 item)"
+        },
+        "deep_learning": {
+          "type": "object",
+          "description": "Penilaian 3 pilar pembelajaran mendalam (Mindful, Meaningful, Joyful)"
+        },
+        "refleksi": {
+          "type": "object",
+          "description": "Refleksi guru dan narasi hasil KBM"
+        },
+        "dokumentasi": {
+          "type": "array",
+          "description": "URL foto dokumentasi kegiatan KBM (maks 5 URL)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Draft", "Menunggu Validasi", "Disetujui", "Revisi"],
+          "description": "Status persetujuan supervisi"
+        },
+        "catatan_supervisi": {
+          "type": "string",
+          "description": "Catatan supervisi dari Kepala Sekolah",
+          "maxLength": 2000
+        },
+        "supervisi_deep_learning": {
+          "type": "object",
+          "description": "Penilaian deep learning oleh Kepala Sekolah"
+        },
+        "tanggal_validasi": {
+          "type": "string",
+          "description": "Waktu validasi Kepala Sekolah",
+          "maxLength": 64
+        },
+        "validator_nama": {
+          "type": "string",
+          "description": "Nama Kepala Sekolah yang memvalidasi",
+          "maxLength": 200
+        },
+        "qr_token": {
+          "type": "string",
+          "description": "Token QR verifikasi keaslian dokumen",
+          "maxLength": 256
+        },
+        "last_saved_by": {
+          "type": "string",
+          "description": "NIP penyimpan terakhir",
+          "maxLength": 64
+        },
+        "_syncedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "tanggal",
+        "guru_nip",
+        "guru_nama",
+        "mapel",
+        "kelas",
+        "materi",
+        "kehadiran",
+        "aktivitas",
+        "deep_learning",
+        "refleksi",
+        "dokumentasi",
+        "status",
+        "qr_token"
+      ]
+    },
+    "User": {
+      "title": "User",
+      "description": "Data profil dan role pengguna guru, kepala sekolah, dan administrator kurikulum (tanpa kata sandi)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID pengguna (e.g. USR-GURU-59)",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "kode_guru": { "type": "number" },
+        "username": { "type": "string", "maxLength": 100 },
+        "nama": { "type": "string", "maxLength": 200 },
+        "gelar": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "role": {
+          "type": "string",
+          "enum": ["guru", "kepsek", "admin"]
+        },
+        "nip": { "type": "string", "maxLength": 32 },
+        "avatar": { "type": "string", "maxLength": 2000 },
+        "mapel_diampu": { "type": "array" },
+        "jurusan": { "type": "array" },
+        "_updatedAt": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["id", "username", "nama", "role", "nip"]
+    },
+    "AppConfig": {
+      "title": "AppConfig",
+      "description": "Konfigurasi instansi sekolah dan parameter integrasi Google Spreadsheet",
+      "type": "object",
+      "properties": {
+        "sekolah": { "type": "string", "maxLength": 200 },
+        "kepala_sekolah": { "type": "string", "maxLength": 200 },
+        "nip_kepala_sekolah": { "type": "string", "maxLength": 32 },
+        "logo_url": { "type": "string", "maxLength": 350000 },
+        "logo_jatim_url": { "type": "string", "maxLength": 350000 },
+        "qr_code_ttd_url": { "type": "string", "maxLength": 350000 },
+        "gas_web_app_url": { "type": "string", "maxLength": 500 },
+        "spreadsheet_id": { "type": "string", "maxLength": 200 },
+        "lock_timeout_ms": { "type": "number" },
+        "tahun_ajaran": { "type": "string", "maxLength": 50 },
+        "semester": { "type": "string", "maxLength": 30 },
+        "_updatedAt": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["sekolah", "kepala_sekolah", "nip_kepala_sekolah"]
+    }
+  },
+  "firestore": {
+    "/jurnals/{jurnalId}": {
+      "schema": { "$ref": "#/entities/JurnalPembelajaran" },
+      "description": "Koleksi data seluruh jurnal KBM guru SMKN 1 Sidayu"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Koleksi profil, role, dan mapel dewan guru dan pimpinan"
+    },
+    "/config/main": {
+      "schema": { "$ref": "#/entities/AppConfig" },
+      "description": "Dokumen konfigurasi global sekolah dan tautan Google Spreadsheet"
+    }
+  }
+}

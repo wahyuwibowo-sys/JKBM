@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .font-formal, .font-formal * {
+    font-family: 'Times New Roman', Times, Georgia, serif !important;
+  }
+}
+
+@media print {
+  @page {
+    size: 215mm 330mm portrait;
+    margin: 8mm 10mm 8mm 10mm;
+  }
+
+  /* Latar belakang putih bersih seragam untuk seluruh dokumen dan margin cetak */
+  html,
+  body,
+  #root,
+  #root > div,
+  main,
+  div,
+  table,
+  tbody,
+  tr,
+  td,
+  th,
+  section,
+  header,
+  footer {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+  }
+
+  body {
+    color: #0f172a !important;
+    font-size: 9pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .page-break,
+  .break-before-page {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .break-after-page {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .break-inside-avoid,
+  table, tr, td, th,
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-one-page {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: always;
+    break-after: page;
+    box-sizing: border-box;
+    width: 100% !important;
+  }
+
+  .print-shadow-none {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  img {
+    max-width: 100% !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}

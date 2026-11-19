@@ -1,0 +1,8 @@
+{
+  "name": "Remix E-Jurnal Pembelajaran Mendalam SMKN 1 Sidayu",
+  "description": "Aplikasi E-Jurnal Pembelajaran Mendalam SMKN 1 Sidayu Gresik terintegrasi Google Spreadsheet dengan supervisi kepala sekolah, QR code verifikasi, dan ekspor PDF/Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

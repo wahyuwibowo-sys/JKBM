@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 230" width="200" height="230">
+  <defs>
+    <radialGradient id="sunburst" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE082"/>
+      <stop offset="60%" stop-color="#FFA000"/>
+      <stop offset="100%" stop-color="#F57C00"/>
+    </radialGradient>
+    <linearGradient id="anchorGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4FC3F7"/>
+      <stop offset="100%" stop-color="#0288D1"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer Shield Contour with Grey Fill -->
+  <path d="M 30,30 C 65,15 135,15 170,30 C 176,90 172,170 100,215 C 28,170 24,90 30,30 Z" 
+        fill="#CFD8DC" stroke="#90A4AE" stroke-width="4"/>
+  <path d="M 34,34 C 67,20 133,20 166,34 C 171,88 168,166 100,209 C 32,166 29,88 34,34 Z" 
+        fill="#ECEFF1" stroke="#B0BEC5" stroke-width="2"/>
+  <!-- School Header Texts -->
+  <text x="100" y="44" font-family="'Arial Black', Impact, sans-serif" font-size="11" font-weight="900" text-anchor="middle" fill="#263238" letter-spacing="1">SMKN 1 SIDAYU</text>
+  <text x="100" y="55" font-family="'Arial Black', Impact, sans-serif" font-size="9" font-weight="900" text-anchor="middle" fill="#263238" letter-spacing="1.5">GRESIK</text>
+  <!-- Sunrise rays / Yellow glow -->
+  <path d="M 40,78 Q 100,55 160,78 L 160,95 Q 100,75 40,95 Z" fill="url(#sunburst)"/>
+  <!-- Cogwheel / Roda Gigi Industri (Engineering / TKR / TITL) -->
+  <g transform="translate(100, 85)">
+    <circle cx="0" cy="0" r="26" fill="#283593" stroke="#1A237E" stroke-width="2"/>
+    <circle cx="0" cy="0" r="32" fill="none" stroke="#3949AB" stroke-width="8" stroke-dasharray="10 7"/>
+    <circle cx="0" cy="0" r="16" fill="#FFC107" stroke="#FFA000" stroke-width="2"/>
+  </g>
+  <!-- Green Ocean Waves (Selat Madura / Sidayu Coast / Maritim) -->
+  <g fill="none" stroke="#2E7D32" stroke-width="3" stroke-linecap="round">
+    <path d="M 40,105 Q 60,98 80,105 T 120,105 T 160,105"/>
+    <path d="M 40,113 Q 60,106 80,113 T 120,113 T 160,113"/>
+    <path d="M 40,121 Q 60,114 80,121 T 120,121 T 160,121"/>
+  </g>
+  <!-- Blue Anchor (Jangkar Laut / APHPi) -->
+  <g stroke="#01579B" stroke-width="1.5">
+    <circle cx="100" cy="85" r="9" fill="none" stroke="#0288D1" stroke-width="3.5"/>
+    <rect x="96" y="94" width="8" height="55" fill="url(#anchorGrad)"/>
+    <rect x="80" y="103" width="40" height="5.5" rx="2" fill="url(#anchorGrad)"/>
+    <path d="M 58,135 Q 100,172 142,135 L 148,145 Q 100,188 52,145 Z" fill="url(#anchorGrad)"/>
+    <polygon points="54,133 46,144 62,142" fill="#0288D1"/>
+    <polygon points="146,133 154,144 138,142" fill="#0288D1"/>
+  </g>
+  <!-- Black Drafting Compass (Jangka Gambar Teknik) -->
+  <g fill="#212121" stroke="#000000" stroke-width="1.5">
+    <circle cx="100" cy="85" r="7" fill="#212121"/>
+    <circle cx="100" cy="85" r="3" fill="#FFFFFF"/>
+    <polygon points="98,88 64,166 70,166 101,88"/>
+    <polygon points="102,88 136,166 130,166 99,88"/>
+  </g>
+  <!-- Twin Golden Fish (Ikan Bandeng Gresik) on Left and Right -->
+  <g transform="translate(42, 130) rotate(20)" fill="#FFA000" stroke="#FF6F00" stroke-width="1">
+    <ellipse cx="0" cy="0" rx="6" ry="16"/>
+    <polygon points="0,14 -7,24 7,24"/>
+    <circle cx="-2" cy="-8" r="1.5" fill="#212121"/>
+  </g>
+  <g transform="translate(158, 130) rotate(-20)" fill="#FFA000" stroke="#FF6F00" stroke-width="1">
+    <ellipse cx="0" cy="0" rx="6" ry="16"/>
+    <polygon points="0,14 -7,24 7,24"/>
+    <circle cx="2" cy="-8" r="1.5" fill="#212121"/>
+  </g>
+  <!-- 4 Computer Monitors Networked (TKJ - Teknik Komputer & Jaringan) -->
+  <g fill="#546E7A" stroke="#263238" stroke-width="1">
+    <rect x="68" y="174" width="12" height="9" rx="1" fill="#78909C"/>
+    <rect x="70" y="176" width="8" height="5" fill="#80D8FF"/>
+    <line x1="74" y1="183" x2="74" y2="186" stroke="#263238"/>
+    <rect x="85" y="179" width="12" height="9" rx="1" fill="#78909C"/>
+    <rect x="87" y="181" width="8" height="5" fill="#80D8FF"/>
+    <line x1="91" y1="188" x2="91" y2="191" stroke="#263238"/>
+    <rect x="103" y="179" width="12" height="9" rx="1" fill="#78909C"/>
+    <rect x="105" y="181" width="8" height="5" fill="#80D8FF"/>
+    <line x1="109" y1="188" x2="109" y2="191" stroke="#263238"/>
+    <rect x="120" y="174" width="12" height="9" rx="1" fill="#78909C"/>
+    <rect x="122" y="176" width="8" height="5" fill="#80D8FF"/>
+    <line x1="126" y1="183" x2="126" y2="186" stroke="#263238"/>
+    <line x1="74" y1="187" x2="126" y2="187" stroke="#263238" stroke-width="1.5"/>
+  </g>
+</svg>
