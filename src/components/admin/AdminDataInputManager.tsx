@@ -12,7 +12,7 @@ import {
 import { StorageService } from '../../services/storageService';
 import { syncUserToFirebase } from '../../services/firebaseService';
 import { formatNip } from '../../utils/nipFormatter';
-import { generateATPFromCPTP } from '../../utils/narrativeGenerator';
+import { analyzeTPForATP, generateATPFromTP } from '../../utils/narrativeGenerator';
 import {
   PlusCircle,
   Edit2,
@@ -419,25 +419,17 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
   const updateCptpField = (patch: Partial<KurikulumCPTP>) => {
     setCptpForm((prev) => {
       const next = { ...prev, ...patch };
-      if (isAtpAutoMode) {
-        next.atp = generateATPFromCPTP({
-          cp: next.cp,
-          tp: next.tp,
-          materiPokok: next.materi_pokok,
-          elemen: next.elemen,
-        });
+      if (patch.tp !== undefined && isAtpAutoMode) {
+        next.atp = generateATPFromTP(next.tp);
       }
       return next;
     });
   };
 
+  const tpAnalysis = analyzeTPForATP(cptpForm.tp);
+
   const handleGenerateAutoATP = () => {
-    const generated = generateATPFromCPTP({
-      cp: cptpForm.cp,
-      tp: cptpForm.tp,
-      materiPokok: cptpForm.materi_pokok,
-      elemen: cptpForm.elemen,
-    });
+    const generated = generateATPFromTP(cptpForm.tp);
 
     if (generated) {
       setIsAtpAutoMode(true);
@@ -445,17 +437,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
       return;
     }
 
-    const topic = (cptpForm.materi_pokok || cptpForm.elemen || '').trim();
-    if (topic) {
-      setIsAtpAutoMode(true);
-      setCptpForm((prev) => ({
-        ...prev,
-        atp: `Tahap 1: Pemahaman konsep ${topic} -> Tahap 2: Praktik terbimbing ${topic} -> Tahap 3: Evaluasi & refleksi pembelajaran`,
-      }));
-      return;
-    }
-
-    showError('Isi Capaian Pembelajaran (CP) atau Tujuan Pembelajaran (TP) terlebih dahulu untuk membuat ATP otomatis.');
+    showError('Isi Tujuan Pembelajaran (TP) terlebih dahulu untuk membuat ATP otomatis.');
   };
 
   const resetCptpForm = () => {
@@ -489,14 +471,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
     const currentList = [...StorageService.getCPTPList()];
     const cleanId = cptpEditId || `CPTP-${Date.now()}`;
     const trimmedAtp = (cptpForm.atp || '').trim();
-    const finalAtp =
-      trimmedAtp ||
-      generateATPFromCPTP({
-        cp: cptpForm.cp,
-        tp: cptpForm.tp,
-        materiPokok: cptpForm.materi_pokok,
-        elemen: cptpForm.elemen,
-      });
+    const finalAtp = trimmedAtp || generateATPFromTP(cptpForm.tp);
 
     const payload: KurikulumCPTP = {
       ...cptpForm,
@@ -1442,7 +1417,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                     </label>
                     {isAtpAutoMode && cptpForm.atp && (
                       <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
-                        Otomatis dari CP &amp; TP
+                        Otomatis Mindmap 1 Baris
                       </span>
                     )}
                   </div>
@@ -1450,22 +1425,57 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                     type="button"
                     onClick={handleGenerateAutoATP}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold transition-colors cursor-pointer"
-                    title="Susun otomatis tahapan ATP dari CP dan TP di atas"
+                    title="Susun mindmap ATP singkat 1 baris dari Bedah TP (KKO + Lingkup Materi)"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Buat Otomatis dari CP &amp; TP</span>
+                    <span>Buat Otomatis dari TP</span>
                   </button>
                 </div>
-                <textarea
-                  rows={2}
+
+                {tpAnalysis.tahapan.length > 0 && (
+                  <div className="mb-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-600">
+                      <span>
+                        <strong className="text-slate-700">KKO:</strong>{' '}
+                        {tpAnalysis.kompetensi.map((k) => `${k.verb} (${k.category})`).join(', ')}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span>
+                        <strong className="text-slate-700">Materi:</strong>{' '}
+                        {tpAnalysis.lingkupMateri.join(' • ')}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {tpAnalysis.tahapan.map((t, idx) => (
+                        <React.Fragment key={t.tahap}>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-amber-200/80 shadow-2xs text-[10.5px]">
+                            <span className="font-extrabold text-amber-800 whitespace-nowrap">
+                              Tahap {t.tahap} ({t.label}):
+                            </span>
+                            <span className="text-slate-700 font-medium">{t.uraian}</span>
+                          </div>
+                          {idx < tpAnalysis.tahapan.length - 1 && (
+                            <span className="text-amber-600 font-black text-xs px-0.5 select-none">
+                              --&gt;
+                            </span>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  type="text"
                   value={cptpForm.atp}
                   onChange={(e) => {
                     const val = e.target.value;
                     setIsAtpAutoMode(val.trim() === '');
-                    setCptpForm({ ...cptpForm, atp: val });
+                    setCptpForm((prev) => ({ ...prev, atp: val }));
                   }}
-                  placeholder="Terisi otomatis saat CP / TP diisi, atau ketik manual. Contoh: Tahap 1: Konsep VLAN -> Tahap 2: Praktik switch manageable -> Tahap 3: Uji koneksi"
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium leading-relaxed"
+                  placeholder="Contoh: Tahap 1 (Konsep): Dasar VLAN --> Tahap 2 (Pendalaman): Cara kerja switch --> Tahap 3 (Penerapan): Mengkonfigurasi & uji"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
                 />
               </div>
 

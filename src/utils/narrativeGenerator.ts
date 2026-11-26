@@ -196,162 +196,639 @@ export function generateBatchCatatanSupervisi(
   }
 }
 
-function cleanPedagogicalPrefix(text: string): string {
+interface BloomEntry {
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  category: string;
+}
+
+const BLOOM_KKO_MAP: Record<string, BloomEntry> = {
+  // C1 - Mengingat
+  mengingat: { level: 1, category: 'C1 • Mengingat' },
+  menyebutkan: { level: 1, category: 'C1 • Mengingat' },
+  menuliskan: { level: 1, category: 'C1 • Mengingat' },
+  mengenali: { level: 1, category: 'C1 • Mengingat' },
+  menunjukkan: { level: 1, category: 'C1 • Mengingat' },
+  mendefinisikan: { level: 1, category: 'C1 • Mengingat' },
+  mengidentifikasi: { level: 1, category: 'C1 • Mengingat' },
+  mendaftar: { level: 1, category: 'C1 • Mengingat' },
+  menandai: { level: 1, category: 'C1 • Mengingat' },
+  menghafal: { level: 1, category: 'C1 • Mengingat' },
+  membaca: { level: 1, category: 'C1 • Mengingat' },
+  mencatat: { level: 1, category: 'C1 • Mengingat' },
+  mengamati: { level: 1, category: 'C1 • Mengingat' },
+
+  // C2 - Memahami
+  memahami: { level: 2, category: 'C2 • Memahami' },
+  menjelaskan: { level: 2, category: 'C2 • Memahami' },
+  mendeskripsikan: { level: 2, category: 'C2 • Memahami' },
+  menguraikan: { level: 2, category: 'C2 • Memahami' },
+  membedakan: { level: 2, category: 'C2 • Memahami' },
+  mengklasifikasikan: { level: 2, category: 'C2 • Memahami' },
+  mengelompokkan: { level: 2, category: 'C2 • Memahami' },
+  merangkum: { level: 2, category: 'C2 • Memahami' },
+  menyimpulkan: { level: 2, category: 'C2 • Memahami' },
+  menafsirkan: { level: 2, category: 'C2 • Memahami' },
+  mencontohkan: { level: 2, category: 'C2 • Memahami' },
+  menginterpretasikan: { level: 2, category: 'C2 • Memahami' },
+  menerangkan: { level: 2, category: 'C2 • Memahami' },
+  menggambarkan: { level: 2, category: 'C2 • Memahami' },
+  memperkirakan: { level: 2, category: 'C2 • Memahami' },
+  reading: { level: 2, category: 'C2 • Memahami' },
+  explaining: { level: 2, category: 'C2 • Memahami' },
+
+  // C3 - Menerapkan
+  menerapkan: { level: 3, category: 'C3 • Menerapkan' },
+  mengaplikasikan: { level: 3, category: 'C3 • Menerapkan' },
+  menggunakan: { level: 3, category: 'C3 • Menerapkan' },
+  memanfaatkan: { level: 3, category: 'C3 • Menerapkan' },
+  mengkonfigurasi: { level: 3, category: 'C3 • Menerapkan' },
+  mengonfigurasi: { level: 3, category: 'C3 • Menerapkan' },
+  menginstalasi: { level: 3, category: 'C3 • Menerapkan' },
+  menginstal: { level: 3, category: 'C3 • Menerapkan' },
+  memasang: { level: 3, category: 'C3 • Menerapkan' },
+  mengoperasikan: { level: 3, category: 'C3 • Menerapkan' },
+  mempraktikkan: { level: 3, category: 'C3 • Menerapkan' },
+  mempraktekan: { level: 3, category: 'C3 • Menerapkan' },
+  membuat: { level: 3, category: 'C3 • Menerapkan' },
+  menyusun: { level: 3, category: 'C3 • Menerapkan' },
+  mengimplementasikan: { level: 3, category: 'C3 • Menerapkan' },
+  melaksanakan: { level: 3, category: 'C3 • Menerapkan' },
+  melakukan: { level: 3, category: 'C3 • Menerapkan' },
+  menghitung: { level: 3, category: 'C3 • Menerapkan' },
+  mendemonstrasikan: { level: 3, category: 'C3 • Menerapkan' },
+  mengeksekusi: { level: 3, category: 'C3 • Menerapkan' },
+  mengelola: { level: 3, category: 'C3 • Menerapkan' },
+  mengolah: { level: 3, category: 'C3 • Menerapkan' },
+  memperbaiki: { level: 3, category: 'C3 • Menerapkan' },
+  merakit: { level: 3, category: 'C3 • Menerapkan' },
+  menyajikan: { level: 3, category: 'C3 • Menerapkan' },
+  menggambar: { level: 3, category: 'C3 • Menerapkan' },
+  menulis: { level: 3, category: 'C3 • Menerapkan' },
+  mengukur: { level: 3, category: 'C3 • Menerapkan' },
+  menyetel: { level: 3, category: 'C3 • Menerapkan' },
+  mensimulasikan: { level: 3, category: 'C3 • Menerapkan' },
+  menyimulasikan: { level: 3, category: 'C3 • Menerapkan' },
+  menjalankan: { level: 3, category: 'C3 • Menerapkan' },
+  memproses: { level: 3, category: 'C3 • Menerapkan' },
+  configuring: { level: 3, category: 'C3 • Menerapkan' },
+
+  // C4 - Menganalisis
+  menganalisis: { level: 4, category: 'C4 • Menganalisis' },
+  membandingkan: { level: 4, category: 'C4 • Menganalisis' },
+  menelaah: { level: 4, category: 'C4 • Menganalisis' },
+  mendiagnosis: { level: 4, category: 'C4 • Menganalisis' },
+  memecahkan: { level: 4, category: 'C4 • Menganalisis' },
+  menyelidiki: { level: 4, category: 'C4 • Menganalisis' },
+  memeriksa: { level: 4, category: 'C4 • Menganalisis' },
+  mengaudit: { level: 4, category: 'C4 • Menganalisis' },
+  menguji: { level: 4, category: 'C4 • Menganalisis' },
+  mengujicoba: { level: 4, category: 'C4 • Menganalisis' },
+  mengaitkan: { level: 4, category: 'C4 • Menganalisis' },
+  mengoreksi: { level: 4, category: 'C4 • Menganalisis' },
+  mendeteksi: { level: 4, category: 'C4 • Menganalisis' },
+  menemukan: { level: 4, category: 'C4 • Menganalisis' },
+  memilah: { level: 4, category: 'C4 • Menganalisis' },
+  troubleshooting: { level: 4, category: 'C4 • Menganalisis' },
+  analyzing: { level: 4, category: 'C4 • Menganalisis' },
+
+  // C5 - Mengevaluasi
+  mengevaluasi: { level: 5, category: 'C5 • Mengevaluasi' },
+  menilai: { level: 5, category: 'C5 • Mengevaluasi' },
+  memvalidasi: { level: 5, category: 'C5 • Mengevaluasi' },
+  memverifikasi: { level: 5, category: 'C5 • Mengevaluasi' },
+  membuktikan: { level: 5, category: 'C5 • Mengevaluasi' },
+  mengkritisi: { level: 5, category: 'C5 • Mengevaluasi' },
+  memutuskan: { level: 5, category: 'C5 • Mengevaluasi' },
+  merekomendasikan: { level: 5, category: 'C5 • Mengevaluasi' },
+  mempertimbangkan: { level: 5, category: 'C5 • Mengevaluasi' },
+  testing: { level: 5, category: 'C5 • Mengevaluasi' },
+
+  // C6 - Mencipta
+  merancang: { level: 6, category: 'C6 • Mencipta' },
+  mendesain: { level: 6, category: 'C6 • Mencipta' },
+  mengembangkan: { level: 6, category: 'C6 • Mencipta' },
+  menciptakan: { level: 6, category: 'C6 • Mencipta' },
+  memproduksi: { level: 6, category: 'C6 • Mencipta' },
+  memodifikasi: { level: 6, category: 'C6 • Mencipta' },
+  membangun: { level: 6, category: 'C6 • Mencipta' },
+  merumuskan: { level: 6, category: 'C6 • Mencipta' },
+  mengkreasi: { level: 6, category: 'C6 • Mencipta' },
+  menghasilkan: { level: 6, category: 'C6 • Mencipta' },
+  merekayasa: { level: 6, category: 'C6 • Mencipta' },
+  creating: { level: 6, category: 'C6 • Mencipta' },
+};
+
+const NOMINAL_START_KKO_MAP: Record<string, { normalizedVerb: string; entry: BloomEntry }> = {
+  identifikasi: { normalizedVerb: 'Mengidentifikasi', entry: BLOOM_KKO_MAP.mengidentifikasi },
+  pemahaman: { normalizedVerb: 'Memahami', entry: BLOOM_KKO_MAP.memahami },
+  pengamatan: { normalizedVerb: 'Mengamati', entry: BLOOM_KKO_MAP.mengamati },
+  penerapan: { normalizedVerb: 'Menerapkan', entry: BLOOM_KKO_MAP.menerapkan },
+  praktik: { normalizedVerb: 'Mempraktikkan', entry: BLOOM_KKO_MAP.mempraktikkan },
+  simulasi: { normalizedVerb: 'Menyimulasikan', entry: BLOOM_KKO_MAP.menyimulasikan },
+  pembuatan: { normalizedVerb: 'Membuat', entry: BLOOM_KKO_MAP.membuat },
+  perencanaan: { normalizedVerb: 'Merencanakan', entry: BLOOM_KKO_MAP.merancang },
+  uji: { normalizedVerb: 'Menguji', entry: BLOOM_KKO_MAP.menguji },
+  pengujian: { normalizedVerb: 'Menguji', entry: BLOOM_KKO_MAP.menguji },
+  analisis: { normalizedVerb: 'Menganalisis', entry: BLOOM_KKO_MAP.menganalisis },
+  evaluasi: { normalizedVerb: 'Mengevaluasi', entry: BLOOM_KKO_MAP.mengevaluasi },
+  perancangan: { normalizedVerb: 'Merancang', entry: BLOOM_KKO_MAP.merancang },
+};
+
+export interface TPClauseBreakdown {
+  kkoList: string[];
+  primaryKKO: string;
+  bloomLevel: number;
+  bloomCategory: string;
+  lingkupMateri: string;
+  fullText: string;
+}
+
+export interface ATPStageItem {
+  tahap: 1 | 2 | 3;
+  label: string;
+  bloomTag: string;
+  uraian: string;
+}
+
+export interface TPAnalysisResult {
+  kompetensi: { verb: string; category: string }[];
+  lingkupMateri: string[];
+  prinsipAlur: string;
+  tahapan: ATPStageItem[];
+  atpText: string;
+}
+
+function capitalizeFirst(str: string): string {
+  const s = str.trim();
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function cleanTPPrefix(text: string): string {
   return text
-    .replace(/^[\s•\-*]+/, '')
-    .replace(/^(?:\d{1,2}|[a-zA-Z])[\.\)]\s+/, '')
+    .replace(/^[\s•\-*–—]+/, '')
+    .replace(/^(?:\d{1,2}|[a-zA-Z])[\.\)]\s*/, '')
+    .replace(/^TP\s*\d{0,2}\s*[:\-–.]\s*/i, '')
     .replace(
-      /^(?:pada\s+akhir\s+fase\s+[a-z0-9/]+\s*,?\s*)?(?:peserta\s+didik|siswa|murid)\s+(?:diharapkan\s+|akan\s+)?(?:mampu|dapat|bisa)\s+/i,
+      /^(?:melalui\s+[^,]+,\s*)?(?:pada\s+akhir\s+(?:pembelajaran|fase\s*[a-zA-Z]?)\s*,?\s*)?(?:peserta\s+didik|siswa|murid)\s+(?:diharapkan\s+|akan\s+)?(?:mampu|dapat|bisa)\s+/i,
       ''
     )
-    .replace(/^(?:mampu|dapat)\s+/i, '')
+    .replace(/^(?:mampu|dapat|bisa)\s+/i, '')
     .replace(/[\s.;:,]+$/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
-function formatStagePhrase(text: string, maxLen = 78): string {
-  const cleaned = cleanPedagogicalPrefix(text).replace(/\s+/g, ' ');
-  if (!cleaned) return '';
-  const capitalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-  if (capitalized.length <= maxLen) return capitalized;
-  const sliced = capitalized.slice(0, maxLen);
-  const lastSpace = sliced.lastIndexOf(' ');
-  return `${(lastSpace > 24 ? sliced.slice(0, lastSpace) : sliced).trim()}`;
+function lookupActiveKKO(token: string): { verb: string; entry: BloomEntry } | null {
+  const cleanWord = token.toLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, '');
+  if (!cleanWord) return null;
+  const entry = BLOOM_KKO_MAP[cleanWord];
+  if (!entry) return null;
+  return { verb: capitalizeFirst(cleanWord), entry };
 }
 
-function extractStepsFromTP(tp: string): string[] {
-  if (!tp || !tp.trim()) return [];
-  const normalized = tp
-    .replace(/\r\n/g, '\n')
-    // Split inline numbered lists like "1. ... 2. ..." without breaking numbers like 802.1Q
-    .replace(/\s+(?=\d{1,2}[\.\)]\s+[A-Za-z])/g, '\n')
-    .replace(/\s+(?=[•\-*]\s+[A-Za-z])/g, '\n');
+function splitClauseAtMidActionKKO(clause: string): string[] {
+  const cleaned = cleanTPPrefix(clause);
+  if (!cleaned) return [];
 
-  const rawLines = normalized
-    .split(/\n+|;\s+/)
-    .map((line) => formatStagePhrase(line))
-    .filter((line) => line.length >= 4);
+  const connectorRegex = /\s+(?:lalu|kemudian|selanjutnya|serta|dan)\s+|,\s+/gi;
+  const result: string[] = [];
+  let sliceStart = 0;
+  let match: RegExpExecArray | null;
 
-  if (rawLines.length > 1) {
-    return rawLines.slice(0, 4);
-  }
+  while ((match = connectorRegex.exec(cleaned)) !== null) {
+    const afterConnector = cleaned.slice(match.index + match[0].length).trim();
+    const firstWordAfter = afterConnector.split(/\s+/)[0] || '';
+    const leftSide = cleaned.slice(sliceStart, match.index).trim();
+    const leftWords = leftSide.split(/\s+/).filter(Boolean);
 
-  // Single line TP: check if composed of multiple sentences or clauses
-  const single = normalized.trim();
-  const sentences = single
-    .split(/\.\s+(?=[A-Z])/)
-    .map((s) => formatStagePhrase(s))
-    .filter((s) => s.length >= 4);
-  if (sentences.length > 1) {
-    return sentences.slice(0, 4);
-  }
-
-  return rawLines;
-}
-
-function extractClausesFromCP(cp: string): string[] {
-  if (!cp || !cp.trim()) return [];
-  const stripped = cleanPedagogicalPrefix(cp.trim());
-  if (!stripped) return [];
-
-  const clauses = stripped
-    .split(/\.\s+|;\s+|,\s+(?:serta\s+|dan\s+)?|\s+serta\s+/i)
-    .map((part) => formatStagePhrase(part))
-    .filter((part) => part.split(/\s+/).length >= 2 && part.length >= 8);
-
-  if (clauses.length > 0) return clauses.slice(0, 4);
-  const single = formatStagePhrase(stripped);
-  return single ? [single] : [];
-}
-
-function isNearDuplicateStage(candidate: string, existing: string[]): boolean {
-  const normCand = candidate.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-  const candWords = new Set(normCand.split(/\s+/).filter((w) => w.length > 3));
-  return existing.some((item) => {
-    const normItem = item.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-    if (normItem === normCand || normItem.includes(normCand) || normCand.includes(normItem)) {
-      return true;
+    // Only split into a new TP sub-clause if leftSide already contains material (>= 2 words)
+    // and the word right after the connector is an active Bloom KKO.
+    if (leftWords.length >= 2 && lookupActiveKKO(firstWordAfter)) {
+      result.push(leftSide);
+      sliceStart = match.index + match[0].length;
     }
-    if (candWords.size === 0) return false;
-    const itemWords = normItem.split(/\s+/).filter((w) => w.length > 3);
-    const overlap = itemWords.filter((w) => candWords.has(w)).length;
-    return overlap >= Math.max(2, Math.ceil(Math.min(candWords.size, itemWords.length) * 0.65));
-  });
+  }
+
+  const tail = cleaned.slice(sliceStart).trim();
+  if (tail) result.push(tail);
+  return result.filter((item) => item.length >= 3);
+}
+
+function dissectTPClause(rawClause: string): TPClauseBreakdown | null {
+  const cleaned = cleanTPPrefix(rawClause);
+  if (!cleaned) return null;
+
+  const words = cleaned.split(/\s+/);
+  const kkoEntries: { verb: string; entry: BloomEntry }[] = [];
+
+  // Check first word (active KKO or nominalized vocational action at start of clause)
+  const firstActive = lookupActiveKKO(words[0] || '');
+  let cursor = 0;
+
+  if (firstActive) {
+    kkoEntries.push(firstActive);
+    cursor = 1;
+  } else {
+    const cleanFirst = (words[0] || '').toLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, '');
+    const nominal = NOMINAL_START_KKO_MAP[cleanFirst];
+    if (nominal) {
+      kkoEntries.push({ verb: nominal.normalizedVerb, entry: nominal.entry });
+      cursor = 1;
+    }
+  }
+
+  // Extract chained leading KKOs sharing the same material (e.g. "Memahami dan menerapkan prosedur K3")
+  while (cursor < words.length) {
+    const rawToken = words[cursor].toLowerCase().replace(/^[,.;:]+|[,.;:]+$/g, '');
+    if (rawToken === 'dan' || rawToken === 'serta' || rawToken === 'atau' || rawToken === 'kemudian' || rawToken === 'lalu') {
+      const nextActive = lookupActiveKKO(words[cursor + 1] || '');
+      if (nextActive) {
+        kkoEntries.push(nextActive);
+        cursor += 2;
+        continue;
+      }
+    }
+    const directNext = lookupActiveKKO(words[cursor]);
+    if (cursor > 0 && words[cursor - 1].endsWith(',') && directNext) {
+      kkoEntries.push(directNext);
+      cursor += 1;
+      continue;
+    }
+    break;
+  }
+
+  // Extract Lingkup Materi after the leading KKO(s)
+  let lingkupMateri = words
+    .slice(cursor)
+    .join(' ')
+    .replace(/^(?:tentang|mengenai|terhadap|pada|dalam|untuk)\s+(?=[A-Z0-9])/i, '')
+    .replace(/[\s.;:,]+$/g, '')
+    .trim();
+
+  if (!lingkupMateri) {
+    lingkupMateri = cleaned;
+  }
+
+  // Fallback if no explicit KKO was found in the clause
+  if (kkoEntries.length === 0) {
+    return {
+      kkoList: ['Memahami', 'Menerapkan'],
+      primaryKKO: 'Menerapkan',
+      bloomLevel: 3,
+      bloomCategory: 'C2-C3 • Pemahaman & Penerapan',
+      lingkupMateri,
+      fullText: `Memahami dan menerapkan ${lingkupMateri}`,
+    };
+  }
+
+  // Highest Bloom target represents the mastery level of the clause
+  const highestEntry = kkoEntries.reduce(
+    (max, cur) => (cur.entry.level > max.entry.level ? cur : max),
+    kkoEntries[0]
+  );
+
+  return {
+    kkoList: kkoEntries.map((k) => k.verb),
+    primaryKKO: highestEntry.verb,
+    bloomLevel: highestEntry.entry.level,
+    bloomCategory: highestEntry.entry.category,
+    lingkupMateri,
+    fullText: capitalizeFirst(cleaned),
+  };
+}
+
+function shortenTopic(materi: string, maxWords = 4): string {
+  const cleaned = materi
+    .replace(/\b(?:secara\s+(?:mandiri|tepat|benar|berkelanjutan|efektif|aktif|kreatif)|dengan\s+(?:baik|benar|tepat)|di\s+lingkungan\s+(?:kerja|sekolah|masyarakat)|dalam\s+kehidupan\s+sehari-hari)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[\s.;:,]+$/g, '')
+    .trim();
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return cleaned;
+
+  // Prefer cutting cleanly before secondary prepositions ("pada", "dalam", "untuk", "melalui", "dengan") if >= 2 core words precede it
+  const prepIndex = words.findIndex(
+    (w, idx) => idx >= 2 && idx <= maxWords && /^(?:pada|dalam|untuk|melalui|dengan|berbasis)$/i.test(w)
+  );
+  if (prepIndex >= 2) {
+    return words.slice(0, prepIndex).join(' ');
+  }
+
+  return words.slice(0, maxWords).join(' ');
+}
+
+function shortenClausePhrase(text: string, maxWords = 6): string {
+  const cleaned = capitalizeFirst(
+    text
+      .replace(/\b(?:secara\s+(?:mandiri|tepat|benar|berkelanjutan|efektif|aktif)|dengan\s+(?:baik|benar|tepat)|dalam\s+kehidupan\s+sehari-hari)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .replace(/[\s.;:,]+$/g, '')
+      .trim()
+  );
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return cleaned;
+  return words.slice(0, maxWords).join(' ');
+}
+
+function buildStageDescription(
+  clauses: TPClauseBreakdown[],
+  defaultFallbackVerb: string
+): string {
+  const uniqueTexts = Array.from(
+    new Set(clauses.map((c) => shortenClausePhrase(c.fullText, 6)))
+  );
+  if (uniqueTexts.length === 0) return defaultFallbackVerb;
+  if (uniqueTexts.length === 1) return uniqueTexts[0];
+  return `${uniqueTexts[0]} & ${uniqueTexts[1].charAt(0).toLowerCase()}${uniqueTexts[1].slice(1)}`;
 }
 
 /**
- * Generates an Alur Tujuan Pembelajaran (ATP) progression string ("Tahap 1: ... -> Tahap 2: ...")
- * directly from Capaian Pembelajaran (CP), Tujuan Pembelajaran (TP), and optional Materi Pokok.
+ * Menganalisis TP dengan 3 langkah Kurikulum Merdeka dan menghasilkan ATP ringkas 1 baris berbentuk mindmap:
+ * Tahap 1 (Konsep): ... --> Tahap 2 (Pendalaman): ... --> Tahap 3 (Penerapan): ...
  */
-export function generateATPFromCPTP(params: {
-  cp?: string;
-  tp?: string;
-  materiPokok?: string;
-  elemen?: string;
-}): string {
-  const cpText = (params.cp || '').trim();
-  const tpText = (params.tp || '').trim();
-  const topicText = formatStagePhrase(params.materiPokok || params.elemen || '', 60);
+export function analyzeTPForATP(tp?: string): TPAnalysisResult {
+  const emptyResult: TPAnalysisResult = {
+    kompetensi: [],
+    lingkupMateri: [],
+    prinsipAlur: 'Mudah ke Sulit • Dasar ke Kompleks',
+    tahapan: [],
+    atpText: '',
+  };
 
-  if (!cpText && !tpText) {
-    return '';
+  const rawTp = (tp || '').trim();
+  if (!rawTp) return emptyResult;
+
+  // Normalize line breaks and split numbered/bulleted TP items without breaking decimals (e.g., 802.1Q)
+  const normalized = rawTp
+    .replace(/\r\n/g, '\n')
+    .replace(/\s+(?=(?:\d{1,2}|[a-zA-Z])[\.\)]\s+[A-Za-z])/g, '\n')
+    .replace(/\s+(?=[•\-*–—]\s+[A-Za-z])/g, '\n');
+
+  const rawItems = normalized
+    .split(/\n+|;\s+|\.\s+(?=[A-Z0-9])/)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 3);
+
+  const subClauses: string[] = [];
+  for (const item of rawItems) {
+    const splitItems = splitClauseAtMidActionKKO(item);
+    for (const sub of splitItems) {
+      subClauses.push(sub);
+    }
   }
 
-  const tpSteps = extractStepsFromTP(tpText);
-  const cpClauses = extractClausesFromCP(cpText);
-  const stages: string[] = [];
+  const dissected: TPClauseBreakdown[] = [];
+  for (const clause of subClauses) {
+    const parsed = dissectTPClause(clause);
+    if (parsed) dissected.push(parsed);
+  }
 
-  if (tpSteps.length >= 3) {
-    stages.push(...tpSteps.slice(0, 4));
-  } else if (tpSteps.length === 2) {
-    // Include an introductory CP clause if distinct, otherwise keep CP + TP flow
-    const leadCp = cpClauses.find((c) => !isNearDuplicateStage(c, tpSteps));
-    if (leadCp) {
-      stages.push(leadCp, ...tpSteps);
-    } else if (topicText && !isNearDuplicateStage(topicText, tpSteps)) {
-      stages.push(`Pemahaman konsep ${topicText}`, ...tpSteps);
-    } else {
-      stages.push(...tpSteps, 'Evaluasi ketercapaian & refleksi pembelajaran');
+  if (dissected.length === 0) return emptyResult;
+
+  // Step 1: Collect unique Kompetensi (KKO) & Lingkup Materi
+  const kompetensiMap = new Map<string, string>();
+  const materiList: string[] = [];
+
+  for (const item of dissected) {
+    for (const kko of item.kkoList) {
+      const lookup = lookupActiveKKO(kko);
+      const cat = lookup ? lookup.entry.category : item.bloomCategory;
+      if (!kompetensiMap.has(kko.toLowerCase())) {
+        kompetensiMap.set(kko.toLowerCase(), `${kko} (${cat})`);
+      }
     }
-  } else if (tpSteps.length === 1) {
-    const distinctCp = cpClauses.filter((c) => !isNearDuplicateStage(c, tpSteps));
-    if (distinctCp.length >= 2) {
-      stages.push(distinctCp[0], tpSteps[0], distinctCp[1]);
-    } else if (distinctCp.length === 1) {
-      stages.push(distinctCp[0], tpSteps[0], 'Uji pemahaman, praktik & refleksi');
+    if (!materiList.some((m) => m.toLowerCase() === item.lingkupMateri.toLowerCase())) {
+      materiList.push(item.lingkupMateri);
+    }
+  }
+
+  const kompetensi = Array.from(kompetensiMap.entries()).map(([, label]) => {
+    const idx = label.indexOf(' (');
+    return {
+      verb: idx >= 0 ? label.slice(0, idx) : label,
+      category: idx >= 0 ? label.slice(idx + 2, -1) : '',
+    };
+  });
+
+  // Step 3: Urutkan Alur (mudah -> sulit / C1 -> C6)
+  const orderedClauses = [...dissected].sort((a, b) => a.bloomLevel - b.bloomLevel);
+  const primaryTopic = shortenTopic(materiList[0] || '', 4);
+  const combinedTopic =
+    materiList.length === 1
+      ? primaryTopic
+      : `${shortenTopic(materiList[0], 3)} & ${shortenTopic(materiList[1], 3)}`;
+
+  let tahapan: ATPStageItem[] = [];
+
+  if (orderedClauses.length === 1) {
+    const single = orderedClauses[0];
+    const topic = shortenTopic(single.lingkupMateri, 4);
+    const targetKKO = single.primaryKKO;
+    const level = single.bloomLevel;
+
+    if (level <= 2) {
+      const firstVerb = single.kkoList[0] || 'Mengenal';
+      tahapan = [
+        {
+          tahap: 1,
+          label: 'Konsep',
+          bloomTag: 'C1',
+          uraian: `Pengertian dasar ${topic}`,
+        },
+        {
+          tahap: 2,
+          label: 'Pendalaman',
+          bloomTag: 'C2',
+          uraian: `${firstVerb} bagian ${topic}`,
+        },
+        {
+          tahap: 3,
+          label: 'Penerapan',
+          bloomTag: 'C3-C4',
+          uraian: `Simpulan & contoh ${topic}`,
+        },
+      ];
+    } else if (level === 3) {
+      tahapan = [
+        {
+          tahap: 1,
+          label: 'Konsep',
+          bloomTag: 'C1-C2',
+          uraian: `Dasar & fungsi ${topic}`,
+        },
+        {
+          tahap: 2,
+          label: 'Pendalaman',
+          bloomTag: 'C2-C3',
+          uraian: `Cara kerja & langkah ${topic}`,
+        },
+        {
+          tahap: 3,
+          label: 'Penerapan',
+          bloomTag: 'C3-C4',
+          uraian: `${targetKKO} & uji ${topic}`,
+        },
+      ];
+    } else if (level === 4) {
+      tahapan = [
+        {
+          tahap: 1,
+          label: 'Konsep',
+          bloomTag: 'C1-C2',
+          uraian: `Konsep dasar ${topic}`,
+        },
+        {
+          tahap: 2,
+          label: 'Pendalaman',
+          bloomTag: 'C2-C3',
+          uraian: `Komponen & alur ${topic}`,
+        },
+        {
+          tahap: 3,
+          label: 'Penerapan',
+          bloomTag: 'C4',
+          uraian: `${targetKKO} & solusi ${topic}`,
+        },
+      ];
     } else {
-      const baseTopic = topicText || tpSteps[0];
-      stages.push(
-        `Pengenalan konsep ${baseTopic}`,
-        tpSteps[0],
-        'Evaluasi hasil & tindak lanjut pembelajaran'
-      );
+      tahapan = [
+        {
+          tahap: 1,
+          label: 'Konsep',
+          bloomTag: 'C1-C2',
+          uraian: `Prinsip & standar ${topic}`,
+        },
+        {
+          tahap: 2,
+          label: 'Pendalaman',
+          bloomTag: 'C3-C4',
+          uraian: `Analisis struktur ${topic}`,
+        },
+        {
+          tahap: 3,
+          label: 'Penerapan',
+          bloomTag: level === 5 ? 'C5' : 'C6',
+          uraian: `${targetKKO} & validasi ${topic}`,
+        },
+      ];
+    }
+  } else if (orderedClauses.length === 2) {
+    const [low, high] = orderedClauses;
+    if (low.bloomLevel >= 3) {
+      tahapan = [
+        {
+          tahap: 1,
+          label: 'Konsep',
+          bloomTag: 'C1-C2',
+          uraian: `Konsep dasar ${combinedTopic}`,
+        },
+        {
+          tahap: 2,
+          label: 'Pendalaman',
+          bloomTag: `C${low.bloomLevel}`,
+          uraian: shortenClausePhrase(low.fullText, 5),
+        },
+        {
+          tahap: 3,
+          label: 'Penerapan',
+          bloomTag: `C${high.bloomLevel}`,
+          uraian: shortenClausePhrase(high.fullText, 5),
+        },
+      ];
+    } else if (high.bloomLevel <= 2) {
+      tahapan = [
+        {
+          tahap: 1,
+          label: 'Konsep',
+          bloomTag: `C${low.bloomLevel}`,
+          uraian: shortenClausePhrase(low.fullText, 5),
+        },
+        {
+          tahap: 2,
+          label: 'Pendalaman',
+          bloomTag: `C${high.bloomLevel}`,
+          uraian: shortenClausePhrase(high.fullText, 5),
+        },
+        {
+          tahap: 3,
+          label: 'Penerapan',
+          bloomTag: 'C3-C4',
+          uraian: `Penerapan ${shortenTopic(high.lingkupMateri, 3)}`,
+        },
+      ];
+    } else {
+      tahapan = [
+        {
+          tahap: 1,
+          label: 'Konsep',
+          bloomTag: `C${low.bloomLevel}`,
+          uraian: shortenClausePhrase(low.fullText, 5),
+        },
+        {
+          tahap: 2,
+          label: 'Pendalaman',
+          bloomTag: 'C2-C3',
+          uraian: `Bagian & prosedur ${shortenTopic(high.lingkupMateri, 3)}`,
+        },
+        {
+          tahap: 3,
+          label: 'Penerapan',
+          bloomTag: `C${high.bloomLevel}`,
+          uraian: shortenClausePhrase(high.fullText, 5),
+        },
+      ];
     }
   } else {
-    // Only CP is filled
-    if (cpClauses.length >= 2) {
-      stages.push(...cpClauses.slice(0, 4));
-    } else if (cpClauses.length === 1) {
-      stages.push(
-        `Eksplorasi konsep ${cpClauses[0]}`,
-        `Penerapan & praktik terbimbing`,
-        `Evaluasi ketercapaian & refleksi`
-      );
-    }
+    const total = orderedClauses.length;
+    const split1 = Math.max(1, Math.floor(total / 3));
+    const split2 = Math.max(split1 + 1, Math.floor((total * 2) / 3));
+
+    const stage1Clauses = orderedClauses.slice(0, split1);
+    const stage2Clauses = orderedClauses.slice(split1, split2);
+    const stage3Clauses = orderedClauses.slice(split2);
+
+    tahapan = [
+      {
+        tahap: 1,
+        label: 'Konsep',
+        bloomTag: `C${stage1Clauses[0].bloomLevel}`,
+        uraian: buildStageDescription(stage1Clauses, `Konsep ${combinedTopic}`),
+      },
+      {
+        tahap: 2,
+        label: 'Pendalaman',
+        bloomTag: `C${stage2Clauses[0].bloomLevel}`,
+        uraian: buildStageDescription(stage2Clauses, `Pendalaman ${combinedTopic}`),
+      },
+      {
+        tahap: 3,
+        label: 'Penerapan',
+        bloomTag: `C${stage3Clauses[stage3Clauses.length - 1].bloomLevel}`,
+        uraian: buildStageDescription(stage3Clauses, `Penerapan ${combinedTopic}`),
+      },
+    ];
   }
 
-  const uniqueStages: string[] = [];
-  for (const s of stages) {
-    const formatted = formatStagePhrase(s);
-    if (formatted && !isNearDuplicateStage(formatted, uniqueStages)) {
-      uniqueStages.push(formatted);
-    }
-  }
+  const atpText = tahapan
+    .map((item) => `Tahap ${item.tahap} (${item.label}): ${item.uraian}`)
+    .join(' --> ');
 
-  if (uniqueStages.length === 0) return '';
-
-  return uniqueStages
-    .slice(0, 4)
-    .map((stage, idx) => `Tahap ${idx + 1}: ${stage}`)
-    .join(' -> ');
+  return {
+    kompetensi,
+    lingkupMateri: materiList,
+    prinsipAlur: 'Mudah ke Sulit • Dasar ke Kompleks',
+    tahapan,
+    atpText,
+  };
 }
+
+/**
+ * Generates an Alur Tujuan Pembelajaran (ATP) mindmap progression string
+ * strictly based on Tujuan Pembelajaran (TP) entered by the user.
+ */
+export function generateATPFromTP(tp?: string): string {
+  return analyzeTPForATP(tp).atpText;
+}
+
