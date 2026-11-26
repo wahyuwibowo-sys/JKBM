@@ -196,3 +196,162 @@ export function generateBatchCatatanSupervisi(
   }
 }
 
+function cleanPedagogicalPrefix(text: string): string {
+  return text
+    .replace(/^[\s•\-*]+/, '')
+    .replace(/^(?:\d{1,2}|[a-zA-Z])[\.\)]\s+/, '')
+    .replace(
+      /^(?:pada\s+akhir\s+fase\s+[a-z0-9/]+\s*,?\s*)?(?:peserta\s+didik|siswa|murid)\s+(?:diharapkan\s+|akan\s+)?(?:mampu|dapat|bisa)\s+/i,
+      ''
+    )
+    .replace(/^(?:mampu|dapat)\s+/i, '')
+    .replace(/[\s.;:,]+$/g, '')
+    .trim();
+}
+
+function formatStagePhrase(text: string, maxLen = 78): string {
+  const cleaned = cleanPedagogicalPrefix(text).replace(/\s+/g, ' ');
+  if (!cleaned) return '';
+  const capitalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  if (capitalized.length <= maxLen) return capitalized;
+  const sliced = capitalized.slice(0, maxLen);
+  const lastSpace = sliced.lastIndexOf(' ');
+  return `${(lastSpace > 24 ? sliced.slice(0, lastSpace) : sliced).trim()}`;
+}
+
+function extractStepsFromTP(tp: string): string[] {
+  if (!tp || !tp.trim()) return [];
+  const normalized = tp
+    .replace(/\r\n/g, '\n')
+    // Split inline numbered lists like "1. ... 2. ..." without breaking numbers like 802.1Q
+    .replace(/\s+(?=\d{1,2}[\.\)]\s+[A-Za-z])/g, '\n')
+    .replace(/\s+(?=[•\-*]\s+[A-Za-z])/g, '\n');
+
+  const rawLines = normalized
+    .split(/\n+|;\s+/)
+    .map((line) => formatStagePhrase(line))
+    .filter((line) => line.length >= 4);
+
+  if (rawLines.length > 1) {
+    return rawLines.slice(0, 4);
+  }
+
+  // Single line TP: check if composed of multiple sentences or clauses
+  const single = normalized.trim();
+  const sentences = single
+    .split(/\.\s+(?=[A-Z])/)
+    .map((s) => formatStagePhrase(s))
+    .filter((s) => s.length >= 4);
+  if (sentences.length > 1) {
+    return sentences.slice(0, 4);
+  }
+
+  return rawLines;
+}
+
+function extractClausesFromCP(cp: string): string[] {
+  if (!cp || !cp.trim()) return [];
+  const stripped = cleanPedagogicalPrefix(cp.trim());
+  if (!stripped) return [];
+
+  const clauses = stripped
+    .split(/\.\s+|;\s+|,\s+(?:serta\s+|dan\s+)?|\s+serta\s+/i)
+    .map((part) => formatStagePhrase(part))
+    .filter((part) => part.split(/\s+/).length >= 2 && part.length >= 8);
+
+  if (clauses.length > 0) return clauses.slice(0, 4);
+  const single = formatStagePhrase(stripped);
+  return single ? [single] : [];
+}
+
+function isNearDuplicateStage(candidate: string, existing: string[]): boolean {
+  const normCand = candidate.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+  const candWords = new Set(normCand.split(/\s+/).filter((w) => w.length > 3));
+  return existing.some((item) => {
+    const normItem = item.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+    if (normItem === normCand || normItem.includes(normCand) || normCand.includes(normItem)) {
+      return true;
+    }
+    if (candWords.size === 0) return false;
+    const itemWords = normItem.split(/\s+/).filter((w) => w.length > 3);
+    const overlap = itemWords.filter((w) => candWords.has(w)).length;
+    return overlap >= Math.max(2, Math.ceil(Math.min(candWords.size, itemWords.length) * 0.65));
+  });
+}
+
+/**
+ * Generates an Alur Tujuan Pembelajaran (ATP) progression string ("Tahap 1: ... -> Tahap 2: ...")
+ * directly from Capaian Pembelajaran (CP), Tujuan Pembelajaran (TP), and optional Materi Pokok.
+ */
+export function generateATPFromCPTP(params: {
+  cp?: string;
+  tp?: string;
+  materiPokok?: string;
+  elemen?: string;
+}): string {
+  const cpText = (params.cp || '').trim();
+  const tpText = (params.tp || '').trim();
+  const topicText = formatStagePhrase(params.materiPokok || params.elemen || '', 60);
+
+  if (!cpText && !tpText) {
+    return '';
+  }
+
+  const tpSteps = extractStepsFromTP(tpText);
+  const cpClauses = extractClausesFromCP(cpText);
+  const stages: string[] = [];
+
+  if (tpSteps.length >= 3) {
+    stages.push(...tpSteps.slice(0, 4));
+  } else if (tpSteps.length === 2) {
+    // Include an introductory CP clause if distinct, otherwise keep CP + TP flow
+    const leadCp = cpClauses.find((c) => !isNearDuplicateStage(c, tpSteps));
+    if (leadCp) {
+      stages.push(leadCp, ...tpSteps);
+    } else if (topicText && !isNearDuplicateStage(topicText, tpSteps)) {
+      stages.push(`Pemahaman konsep ${topicText}`, ...tpSteps);
+    } else {
+      stages.push(...tpSteps, 'Evaluasi ketercapaian & refleksi pembelajaran');
+    }
+  } else if (tpSteps.length === 1) {
+    const distinctCp = cpClauses.filter((c) => !isNearDuplicateStage(c, tpSteps));
+    if (distinctCp.length >= 2) {
+      stages.push(distinctCp[0], tpSteps[0], distinctCp[1]);
+    } else if (distinctCp.length === 1) {
+      stages.push(distinctCp[0], tpSteps[0], 'Uji pemahaman, praktik & refleksi');
+    } else {
+      const baseTopic = topicText || tpSteps[0];
+      stages.push(
+        `Pengenalan konsep ${baseTopic}`,
+        tpSteps[0],
+        'Evaluasi hasil & tindak lanjut pembelajaran'
+      );
+    }
+  } else {
+    // Only CP is filled
+    if (cpClauses.length >= 2) {
+      stages.push(...cpClauses.slice(0, 4));
+    } else if (cpClauses.length === 1) {
+      stages.push(
+        `Eksplorasi konsep ${cpClauses[0]}`,
+        `Penerapan & praktik terbimbing`,
+        `Evaluasi ketercapaian & refleksi`
+      );
+    }
+  }
+
+  const uniqueStages: string[] = [];
+  for (const s of stages) {
+    const formatted = formatStagePhrase(s);
+    if (formatted && !isNearDuplicateStage(formatted, uniqueStages)) {
+      uniqueStages.push(formatted);
+    }
+  }
+
+  if (uniqueStages.length === 0) return '';
+
+  return uniqueStages
+    .slice(0, 4)
+    .map((stage, idx) => `Tahap ${idx + 1}: ${stage}`)
+    .join(' -> ');
+}

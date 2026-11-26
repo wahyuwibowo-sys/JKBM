@@ -12,6 +12,7 @@ import {
 import { StorageService } from '../../services/storageService';
 import { syncUserToFirebase } from '../../services/firebaseService';
 import { formatNip } from '../../utils/nipFormatter';
+import { generateATPFromCPTP } from '../../utils/narrativeGenerator';
 import {
   PlusCircle,
   Edit2,
@@ -403,6 +404,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
   const [cptpEditId, setCptpEditId] = useState<string | null>(null);
   const [cptpFilterMapel, setCptpFilterMapel] = useState<string>('all');
   const [cptpSearch, setCptpSearch] = useState<string>('');
+  const [isAtpAutoMode, setIsAtpAutoMode] = useState<boolean>(true);
   const [cptpForm, setCptpForm] = useState<KurikulumCPTP>({
     id: '',
     mapel_kode: mapelList[0]?.kode || 'MPKK',
@@ -414,8 +416,51 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
     atp: '',
   });
 
+  const updateCptpField = (patch: Partial<KurikulumCPTP>) => {
+    setCptpForm((prev) => {
+      const next = { ...prev, ...patch };
+      if (isAtpAutoMode) {
+        next.atp = generateATPFromCPTP({
+          cp: next.cp,
+          tp: next.tp,
+          materiPokok: next.materi_pokok,
+          elemen: next.elemen,
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleGenerateAutoATP = () => {
+    const generated = generateATPFromCPTP({
+      cp: cptpForm.cp,
+      tp: cptpForm.tp,
+      materiPokok: cptpForm.materi_pokok,
+      elemen: cptpForm.elemen,
+    });
+
+    if (generated) {
+      setIsAtpAutoMode(true);
+      setCptpForm((prev) => ({ ...prev, atp: generated }));
+      return;
+    }
+
+    const topic = (cptpForm.materi_pokok || cptpForm.elemen || '').trim();
+    if (topic) {
+      setIsAtpAutoMode(true);
+      setCptpForm((prev) => ({
+        ...prev,
+        atp: `Tahap 1: Pemahaman konsep ${topic} -> Tahap 2: Praktik terbimbing ${topic} -> Tahap 3: Evaluasi & refleksi pembelajaran`,
+      }));
+      return;
+    }
+
+    showError('Isi Capaian Pembelajaran (CP) atau Tujuan Pembelajaran (TP) terlebih dahulu untuk membuat ATP otomatis.');
+  };
+
   const resetCptpForm = () => {
     setCptpEditId(null);
+    setIsAtpAutoMode(true);
     setCptpForm({
       id: '',
       mapel_kode: mapelList[0]?.kode || 'MPKK',
@@ -430,6 +475,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
 
   const handleEditCPTP = (item: KurikulumCPTP) => {
     setCptpEditId(item.id);
+    setIsAtpAutoMode(!item.atp || !item.atp.trim());
     setCptpForm({ ...item });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -442,6 +488,16 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
     }
     const currentList = [...StorageService.getCPTPList()];
     const cleanId = cptpEditId || `CPTP-${Date.now()}`;
+    const trimmedAtp = (cptpForm.atp || '').trim();
+    const finalAtp =
+      trimmedAtp ||
+      generateATPFromCPTP({
+        cp: cptpForm.cp,
+        tp: cptpForm.tp,
+        materiPokok: cptpForm.materi_pokok,
+        elemen: cptpForm.elemen,
+      });
+
     const payload: KurikulumCPTP = {
       ...cptpForm,
       id: cleanId,
@@ -449,7 +505,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
       elemen: (cptpForm.elemen || '').trim(),
       cp: (cptpForm.cp || '').trim(),
       tp: (cptpForm.tp || '').trim(),
-      atp: (cptpForm.atp || '').trim(),
+      atp: finalAtp,
     };
 
     if (cptpEditId) {
@@ -1327,7 +1383,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                   <input
                     type="text"
                     value={cptpForm.elemen}
-                    onChange={(e) => setCptpForm({ ...cptpForm, elemen: e.target.value })}
+                    onChange={(e) => updateCptpField({ elemen: e.target.value })}
                     placeholder="Contoh: Perencanaan & Pengalamatan Jaringan"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold"
                   />
@@ -1341,7 +1397,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                 <input
                   type="text"
                   value={cptpForm.materi_pokok || ''}
-                  onChange={(e) => setCptpForm({ ...cptpForm, materi_pokok: e.target.value })}
+                  onChange={(e) => updateCptpField({ materi_pokok: e.target.value })}
                   placeholder="Contoh: Konfigurasi VLAN & Inter-VLAN Routing pada Switch Manageable"
                   required
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-blue-900"
@@ -1356,7 +1412,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                   <textarea
                     rows={3}
                     value={cptpForm.cp}
-                    onChange={(e) => setCptpForm({ ...cptpForm, cp: e.target.value })}
+                    onChange={(e) => updateCptpField({ cp: e.target.value })}
                     placeholder="Contoh: Peserta didik mampu merencanakan topologi dan arsitektur jaringan..."
                     required
                     className="w-full p-3 rounded-xl border border-slate-200 text-xs leading-relaxed"
@@ -1370,7 +1426,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                   <textarea
                     rows={3}
                     value={cptpForm.tp}
-                    onChange={(e) => setCptpForm({ ...cptpForm, tp: e.target.value })}
+                    onChange={(e) => updateCptpField({ tp: e.target.value })}
                     placeholder="Contoh: 1. Mengkonfigurasi VLAN dan Trunking. 2. Troubleshooting koneksi..."
                     required
                     className="w-full p-3 rounded-xl border border-slate-200 text-xs leading-relaxed"
@@ -1379,15 +1435,37 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Alur Tujuan Pembelajaran (ATP) / Tahapan Belajar
-                </label>
-                <input
-                  type="text"
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Alur Tujuan Pembelajaran (ATP) / Tahapan Belajar
+                    </label>
+                    {isAtpAutoMode && cptpForm.atp && (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
+                        Otomatis dari CP &amp; TP
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAutoATP}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold transition-colors cursor-pointer"
+                    title="Susun otomatis tahapan ATP dari CP dan TP di atas"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Buat Otomatis dari CP &amp; TP</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={2}
                   value={cptpForm.atp}
-                  onChange={(e) => setCptpForm({ ...cptpForm, atp: e.target.value })}
-                  placeholder="Contoh: Tahap 1: Konsep VLAN -> Tahap 2: Praktik switch manageable -> Tahap 3: Uji koneksi"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setIsAtpAutoMode(val.trim() === '');
+                    setCptpForm({ ...cptpForm, atp: val });
+                  }}
+                  placeholder="Terisi otomatis saat CP / TP diisi, atau ketik manual. Contoh: Tahap 1: Konsep VLAN -> Tahap 2: Praktik switch manageable -> Tahap 3: Uji koneksi"
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium leading-relaxed"
                 />
               </div>
 
