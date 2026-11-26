@@ -28,6 +28,11 @@ import {
   syncUserToFirebase,
   syncConfigToFirebase,
   sanitizeJurnalForFirestore,
+  deleteJurnalsFromFirebase,
+  deleteAllJurnalsFromFirebase,
+  getDeletedSeedIds,
+  addDeletedSeedIds,
+  SEED_JURNAL_IDS,
 } from './firebaseService';
 import { GasService } from './gasService';
 import { formatNip, normalizeNip } from '../utils/nipFormatter';
@@ -527,26 +532,37 @@ export class StorageService {
 
   // Jurnal Pembelajaran
   static getJurnalList(): JurnalPembelajaran[] {
+    const deletedSeeds = new Set(getDeletedSeedIds());
     try {
       const data = localStorage.getItem(STORAGE_KEYS.JURNAL);
       if (!data) {
-        const initialCleaned = INITIAL_JURNAL.map((j) => ({ ...j, guru_nip: StorageService.cleanNip(j.guru_nip) }));
+        const initialCleaned = INITIAL_JURNAL
+          .filter((j) => !deletedSeeds.has(j.id))
+          .map((j) => ({ ...j, guru_nip: StorageService.cleanNip(j.guru_nip) }));
         localStorage.setItem(STORAGE_KEYS.JURNAL, JSON.stringify(initialCleaned));
         return initialCleaned;
       }
       const list: JurnalPembelajaran[] = JSON.parse(data);
       let modified = false;
-      const cleaned = list.map((j) => {
-        const cleanVal = StorageService.cleanNip(j.guru_nip);
-        if (cleanVal !== j.guru_nip) modified = true;
-        // Sanitasi foto base64/blob jika ada sisa data lama agar LocalStorage & Firestore selalu ringan
-        let docClean = Array.isArray(j.dokumentasi) ? j.dokumentasi : [];
-        if (docClean.some((d) => !d || d.startsWith('data:image') || d.startsWith('blob:'))) {
-          modified = true;
-          docClean = docClean.filter((d) => Boolean(d) && !d.startsWith('data:image') && !d.startsWith('blob:'));
-        }
-        return { ...j, guru_nip: cleanVal, dokumentasi: docClean };
-      });
+      const cleaned = list
+        .filter((j) => {
+          if (j?.id && SEED_JURNAL_IDS.has(j.id) && deletedSeeds.has(j.id)) {
+            modified = true;
+            return false;
+          }
+          return true;
+        })
+        .map((j) => {
+          const cleanVal = StorageService.cleanNip(j.guru_nip);
+          if (cleanVal !== j.guru_nip) modified = true;
+          // Sanitasi foto base64/blob jika ada sisa data lama agar LocalStorage & Firestore selalu ringan
+          let docClean = Array.isArray(j.dokumentasi) ? j.dokumentasi : [];
+          if (docClean.some((d) => !d || d.startsWith('data:image') || d.startsWith('blob:'))) {
+            modified = true;
+            docClean = docClean.filter((d) => Boolean(d) && !d.startsWith('data:image') && !d.startsWith('blob:'));
+          }
+          return { ...j, guru_nip: cleanVal, dokumentasi: docClean };
+        });
       if (modified) {
         try {
           localStorage.setItem(STORAGE_KEYS.JURNAL, JSON.stringify(cleaned));
@@ -554,7 +570,9 @@ export class StorageService {
       }
       return cleaned;
     } catch {
-      return INITIAL_JURNAL.map((j) => ({ ...j, guru_nip: StorageService.cleanNip(j.guru_nip) }));
+      return INITIAL_JURNAL
+        .filter((j) => !deletedSeeds.has(j.id))
+        .map((j) => ({ ...j, guru_nip: StorageService.cleanNip(j.guru_nip) }));
     }
   }
 
@@ -810,6 +828,67 @@ export class StorageService {
       return { success: true, updatedCount: updatedItems.length };
     } catch (e: any) {
       return { success: false, updatedCount: 0, error: e?.message };
+    }
+  }
+
+  // Delete selected journals across localStorage & Firestore (Admin cleanup)
+  static async deleteJurnals(
+    jurnalIds: string[]
+  ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+    try {
+      if (!jurnalIds || jurnalIds.length === 0) {
+        return { success: true, deletedCount: 0 };
+      }
+      const idSet = new Set(jurnalIds);
+      const list = this.getJurnalList();
+      const remaining = list.filter((j) => !idSet.has(j.id));
+      const localRemoved = list.length - remaining.length;
+
+      this.saveJurnalList(remaining);
+
+      const deletedSeeds = jurnalIds.filter((id) => SEED_JURNAL_IDS.has(id));
+      if (deletedSeeds.length > 0) {
+        const nextSeeds = addDeletedSeedIds(deletedSeeds);
+        this.saveConfig({ deleted_seed_ids: nextSeeds }, true);
+      }
+
+      const cloudRes = await deleteJurnalsFromFirebase(jurnalIds);
+      if (cloudRes.error) {
+        return {
+          success: false,
+          deletedCount: localRemoved,
+          error: `Terhapus di perangkat ini, namun sinkronisasi hapus cloud terkendala: ${cloudRes.error}`,
+        };
+      }
+
+      return { success: true, deletedCount: Math.max(localRemoved, cloudRes.deletedCount) };
+    } catch (e: any) {
+      return { success: false, deletedCount: 0, error: e?.message || 'Gagal menghapus jurnal.' };
+    }
+  }
+
+  // Delete ALL journals from all teachers across localStorage & Firestore (Admin cleanup)
+  static async deleteAllJurnals(): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+    try {
+      const currentCount = this.getJurnalList().length;
+      this.saveJurnalList([]);
+
+      const allSeeds = Array.from(SEED_JURNAL_IDS);
+      const nextSeeds = addDeletedSeedIds(allSeeds);
+      this.saveConfig({ deleted_seed_ids: nextSeeds }, true);
+
+      const cloudRes = await deleteAllJurnalsFromFirebase();
+      if (cloudRes.error) {
+        return {
+          success: false,
+          deletedCount: currentCount,
+          error: `Data lokal dibersihkan, namun penghapusan cloud terkendala: ${cloudRes.error}`,
+        };
+      }
+
+      return { success: true, deletedCount: Math.max(currentCount, cloudRes.deletedCount) };
+    } catch (e: any) {
+      return { success: false, deletedCount: 0, error: e?.message || 'Gagal membersihkan seluruh jurnal.' };
     }
   }
 

@@ -103,11 +103,36 @@ export function handleFirestoreError(
 }
 
 const PENDING_QUEUE_KEY = 'ejurnal_pending_sync_v1';
-const SEED_JURNAL_IDS = new Set([
+const DELETED_SEEDS_KEY = 'ejurnal_deleted_seeds_v1';
+export const SEED_JURNAL_IDS = new Set([
   'JRN-20261016-001',
   'JRN-20261017-002',
   'JRN-20261015-003',
 ]);
+
+export function getDeletedSeedIds(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_SEEDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedSeedIds(ids: string[]): string[] {
+  const existing = new Set(getDeletedSeedIds());
+  ids.forEach((id) => {
+    if (SEED_JURNAL_IDS.has(id)) {
+      existing.add(id);
+    }
+  });
+  const next = Array.from(existing).slice(0, 20);
+  try {
+    localStorage.setItem(DELETED_SEEDS_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
+}
 
 function cleanNipValue(nip?: string | null): string {
   if (!nip) return '-';
@@ -260,6 +285,27 @@ function dequeuePendingSync(jurnalId: string): void {
   }
 }
 
+export function removeIdsFromPendingSync(jurnalIds: string[]): void {
+  if (!jurnalIds || jurnalIds.length === 0) return;
+  const queue = getPendingSyncQueue();
+  let changed = false;
+  for (const id of jurnalIds) {
+    if (id in queue) {
+      delete queue[id];
+      changed = true;
+    }
+  }
+  if (changed) {
+    savePendingSyncQueue(queue);
+  }
+}
+
+export function clearPendingSyncQueue(): void {
+  try {
+    localStorage.removeItem(PENDING_QUEUE_KEY);
+  } catch {}
+}
+
 function isQuotaError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return msg.toLowerCase().includes('quota exceeded') || msg.includes('resource-exhausted');
@@ -348,6 +394,88 @@ export async function syncJurnalsBatchToFirebase(jurnals: JurnalPembelajaran[]):
   }
 
   return syncedCount;
+}
+
+// Delete selected journals from Firestore in atomic batches
+export async function deleteJurnalsFromFirebase(
+  jurnalIds: string[]
+): Promise<{ deletedCount: number; error?: string }> {
+  if (!jurnalIds || jurnalIds.length === 0) return { deletedCount: 0 };
+
+  removeIdsFromPendingSync(jurnalIds);
+  const validIds = jurnalIds
+    .map((id) => clampString(id, 128).replace(/[^a-zA-Z0-9_\-]/g, '-'))
+    .filter(Boolean);
+
+  if (validIds.length === 0) return { deletedCount: 0 };
+
+  let deletedCount = 0;
+  const CHUNK_SIZE = 400;
+
+  for (let i = 0; i < validIds.length; i += CHUNK_SIZE) {
+    const chunk = validIds.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(db);
+    for (const id of chunk) {
+      batch.delete(doc(db, 'jurnals', id));
+    }
+
+    try {
+      await batch.commit();
+      deletedCount += chunk.length;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+        try {
+          handleFirestoreError(error, OperationType.DELETE, 'jurnals');
+        } catch (wrapped) {
+          return {
+            deletedCount,
+            error: wrapped instanceof Error ? wrapped.message : msg,
+          };
+        }
+      }
+      return { deletedCount, error: msg };
+    }
+  }
+
+  return { deletedCount };
+}
+
+// Delete all journals currently stored in Firestore collection (batched cleanup for Admin)
+export async function deleteAllJurnalsFromFirebase(): Promise<{ deletedCount: number; error?: string }> {
+  clearPendingSyncQueue();
+  let totalDeleted = 0;
+  const CHUNK_SIZE = 400;
+
+  try {
+    while (true) {
+      const snap = await getDocs(query(collection(db, 'jurnals'), limit(CHUNK_SIZE)));
+      if (snap.empty) break;
+
+      const batch = writeBatch(db);
+      snap.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+      await batch.commit();
+      totalDeleted += snap.size;
+
+      if (snap.size < CHUNK_SIZE) break;
+    }
+    return { deletedCount: totalDeleted };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+      try {
+        handleFirestoreError(error, OperationType.DELETE, 'jurnals');
+      } catch (wrapped) {
+        return {
+          deletedCount: totalDeleted,
+          error: wrapped instanceof Error ? wrapped.message : msg,
+        };
+      }
+    }
+    return { deletedCount: totalDeleted, error: msg };
+  }
 }
 
 // Flush queued offline journals when network returns or app boots
@@ -514,6 +642,12 @@ export async function syncConfigToFirebase(config: AppConfig): Promise<boolean> 
   if (typeof config.qr_code_ttd_url === 'string' && config.qr_code_ttd_url.length <= 340000) {
     payload.qr_code_ttd_url = config.qr_code_ttd_url;
   }
+  if (Array.isArray(config.deleted_seed_ids)) {
+    payload.deleted_seed_ids = config.deleted_seed_ids
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      .slice(0, 20)
+      .map((id) => clampString(id, 128));
+  }
 
   try {
     await setDoc(doc(db, 'config', 'main'), payload, { merge: true });
@@ -551,6 +685,10 @@ export async function loadConfigFromFirebase(
     if (remote.logo_url) patch.logo_url = remote.logo_url;
     if (remote.logo_jatim_url) patch.logo_jatim_url = remote.logo_jatim_url;
     if (remote.qr_code_ttd_url) patch.qr_code_ttd_url = remote.qr_code_ttd_url;
+    if (Array.isArray(remote.deleted_seed_ids)) {
+      patch.deleted_seed_ids = remote.deleted_seed_ids;
+      addDeletedSeedIds(remote.deleted_seed_ids);
+    }
     return saveConfigFn(patch);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
@@ -568,6 +706,13 @@ export interface JournalScope {
   nip?: string;
   nama?: string;
   gelar?: string;
+}
+
+function getQueryLimitForScope(scope: JournalScope): number {
+  if (scope.role === 'kepsek' || scope.role === 'admin') return 400;
+  const cleanNip = cleanNipValue(scope.nip);
+  if ((cleanNip && cleanNip !== '-') || `${scope.nama || ''}`.trim()) return 150;
+  return 50;
 }
 
 function buildScopedJournalQuery(scope: JournalScope): Query<DocumentData> {
@@ -588,17 +733,37 @@ function buildScopedJournalQuery(scope: JournalScope): Query<DocumentData> {
 
 function mergeCloudAndLocalJournals(
   localJournals: JurnalPembelajaran[],
-  cloudJournals: JurnalPembelajaran[]
+  cloudJournals: JurnalPembelajaran[],
+  options?: {
+    isExhaustiveServerSnapshot?: boolean;
+    removedIds?: Set<string>;
+  }
 ): JurnalPembelajaran[] {
   const pendingQueue = getPendingSyncQueue();
+  const deletedSeeds = new Set(getDeletedSeedIds());
+  const cloudIds = new Set(cloudJournals.map((j) => j.id).filter(Boolean));
   const mergedMap = new Map<string, JurnalPembelajaran>();
 
   for (const lj of localJournals) {
-    if (lj?.id) mergedMap.set(lj.id, lj);
+    if (!lj?.id) continue;
+    if (options?.removedIds?.has(lj.id)) continue;
+    if (SEED_JURNAL_IDS.has(lj.id) && deletedSeeds.has(lj.id)) continue;
+
+    if (options?.isExhaustiveServerSnapshot && !cloudIds.has(lj.id)) {
+      const isPendingOffline = lj.id in pendingQueue;
+      const isUndeletedSeed = SEED_JURNAL_IDS.has(lj.id) && !deletedSeeds.has(lj.id);
+      if (!isPendingOffline && !isUndeletedSeed) {
+        // Removed on Firestore (e.g. cleaned up by Admin)
+        continue;
+      }
+    }
+
+    mergedMap.set(lj.id, lj);
   }
 
   for (const cj of cloudJournals) {
     if (!cj?.id) continue;
+    if (options?.removedIds?.has(cj.id)) continue;
     const localExisting = mergedMap.get(cj.id);
     if (!localExisting) {
       mergedMap.set(cj.id, cj);
@@ -638,6 +803,7 @@ export function subscribeToFirestoreJurnals(
   onUpdate: (updatedJournals: JurnalPembelajaran[]) => void
 ): () => void {
   const path = 'jurnals';
+  const queryLimit = getQueryLimitForScope(scope);
   try {
     const q = buildScopedJournalQuery(scope);
     return onSnapshot(
@@ -651,7 +817,20 @@ export function subscribeToFirestoreJurnals(
           }
         });
 
-        const merged = mergeCloudAndLocalJournals(getLocalJournals(), cloudJournals);
+        const removedIds = new Set<string>();
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'removed') {
+            removedIds.add(change.doc.id);
+          }
+        });
+
+        const isExhaustiveServerSnapshot =
+          !snapshot.metadata.fromCache && cloudJournals.length < queryLimit;
+
+        const merged = mergeCloudAndLocalJournals(getLocalJournals(), cloudJournals, {
+          isExhaustiveServerSnapshot,
+          removedIds,
+        });
         saveLocalJournals(merged);
         onUpdate(merged);
       },
@@ -682,6 +861,7 @@ export async function syncLocalAndFirestoreJurnals(
   onDataMerged?: (updatedJournals: JurnalPembelajaran[]) => void
 ): Promise<JurnalPembelajaran[]> {
   const path = 'jurnals';
+  const queryLimit = getQueryLimitForScope(scope);
   try {
     await flushPendingJurnalSyncs();
     const q = buildScopedJournalQuery(scope);
@@ -692,7 +872,9 @@ export async function syncLocalAndFirestoreJurnals(
       if (data && data.id) cloudJournals.push(data);
     });
 
-    const merged = mergeCloudAndLocalJournals(getLocalJournals(), cloudJournals);
+    const merged = mergeCloudAndLocalJournals(getLocalJournals(), cloudJournals, {
+      isExhaustiveServerSnapshot: cloudJournals.length < queryLimit,
+    });
     saveLocalJournals(merged);
     if (onDataMerged) onDataMerged(merged);
     return merged;

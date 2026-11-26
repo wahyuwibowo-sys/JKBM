@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronDown,
   UserCheck,
+  Trash2,
 } from 'lucide-react';
 import { ShareAppModal } from './common/ShareAppModal';
 import { DEFAULT_LOGO_JATIM } from '../data/defaultLogos';
@@ -427,6 +428,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <Settings className="w-4 h-4 shrink-0 text-amber-400" />
                   {!isCollapsed && <span className="truncate">Kode Apps Script</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('admin-hapus-jurnal')}
+                  title="Kelola & Hapus Jurnal Uji Coba"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    isCollapsed ? 'justify-center px-0' : ''
+                  } ${
+                    currentTab === 'admin-hapus-jurnal'
+                      ? 'bg-amber-600 text-white font-bold shadow-xs'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Trash2 className="w-4 h-4 shrink-0 text-rose-400" />
+                  {!isCollapsed && <span className="truncate">Kelola &amp; Hapus Jurnal</span>}
                 </button>
 
                 <button

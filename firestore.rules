@@ -135,7 +135,7 @@ service cloud.firestore {
           'sekolah', 'kepala_sekolah', 'nip_kepala_sekolah',
           'logo_url', 'logo_jatim_url', 'qr_code_ttd_url',
           'gas_web_app_url', 'spreadsheet_id', 'lock_timeout_ms',
-          'tahun_ajaran', 'semester', '_updatedAt'
+          'tahun_ajaran', 'semester', 'deleted_seed_ids', '_updatedAt'
         ])
         && isValidString(data.sekolah, 1, 200)
         && isValidString(data.kepala_sekolah, 1, 200)
@@ -148,6 +148,7 @@ service cloud.firestore {
         && (!('lock_timeout_ms' in data) || (data.lock_timeout_ms is number && data.lock_timeout_ms >= 1000 && data.lock_timeout_ms <= 120000))
         && isValidOptionalString(data, 'tahun_ajaran', 50)
         && isValidOptionalString(data, 'semester', 30)
+        && (!('deleted_seed_ids' in data) || (data.deleted_seed_ids is list && data.deleted_seed_ids.size() <= 20 && (data.deleted_seed_ids.size() == 0 || isValidString(data.deleted_seed_ids[0], 1, 128))))
         && isValidOptionalString(data, '_updatedAt', 64);
     }
 
@@ -173,7 +174,7 @@ service cloud.firestore {
           'qr_token', 'last_saved_by', '_syncedAt'
         ]);
 
-      allow delete: if false;
+      allow delete: if isValidId(jurnalId);
     }
 
     // 4. Koleksi Profil Dewan Guru & Pimpinan (Tanpa Password)

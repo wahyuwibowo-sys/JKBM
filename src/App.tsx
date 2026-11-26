@@ -27,6 +27,7 @@ import { AdminDataInputManager } from './components/admin/AdminDataInputManager'
 import { AdminLogoManager } from './components/admin/AdminLogoManager';
 import { AdminSpreadsheetView } from './components/admin/AdminSpreadsheetView';
 import { AdminAppsScriptCode } from './components/admin/AdminAppsScriptCode';
+import { AdminJournalManager } from './components/admin/AdminJournalManager';
 import { DEFAULT_LOGO_JATIM } from './data/defaultLogos';
 import { VerificationModal } from './components/verification/VerificationModal';
 import { JournalDetailModal } from './components/common/JournalDetailModal';
@@ -294,6 +295,7 @@ export default function App() {
                   {currentTab === 'admin-logo' && 'Kelola Logo & TTD'}
                   {currentTab === 'admin-database' && 'Database Spreadsheet'}
                   {currentTab === 'admin-apps-script' && 'Apps Script'}
+                  {currentTab === 'admin-hapus-jurnal' && 'Hapus Jurnal'}
                   {currentTab === 'laporan' && 'Laporan'}
                 </div>
               </div>
@@ -319,6 +321,7 @@ export default function App() {
                 {currentTab === 'admin-logo' && 'Kelola Logo & Barcode Tanda Tangan Resmi'}
                 {currentTab === 'admin-database' && 'Database Spreadsheet Google'}
                 {currentTab === 'admin-apps-script' && 'Integrasi Google Apps Script (Code.gs)'}
+                {currentTab === 'admin-hapus-jurnal' && 'Kelola & Hapus Jurnal Uji Coba Guru'}
                 {currentTab === 'laporan' && 'Laporan Cetak & Ekspor Resmi'}
               </h1>
             </div>
@@ -527,6 +530,14 @@ export default function App() {
               />
             )}
             {currentTab === 'admin-apps-script' && <AdminAppsScriptCode config={config} />}
+            {currentTab === 'admin-hapus-jurnal' && (
+              <AdminJournalManager
+                journals={journals}
+                teachers={teachers}
+                onViewJournal={(j) => setViewingJurnal(j)}
+                onRefreshAllData={refreshAllData}
+              />
+            )}
           </>
         )}
 

@@ -189,6 +189,10 @@
         "lock_timeout_ms": { "type": "number" },
         "tahun_ajaran": { "type": "string", "maxLength": 50 },
         "semester": { "type": "string", "maxLength": 30 },
+        "deleted_seed_ids": {
+          "type": "array",
+          "description": "Daftar ID jurnal contoh bawaan yang telah dibersihkan Admin"
+        },
         "_updatedAt": { "type": "string", "format": "date-time", "maxLength": 64 }
       },
       "required": ["sekolah", "kepala_sekolah", "nip_kepala_sekolah"]

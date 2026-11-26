@@ -133,4 +133,5 @@ export interface AppConfig {
   lock_timeout_ms: number;
   tahun_ajaran?: string;
   semester?: string;
+  deleted_seed_ids?: string[];
 }
