@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import {
   User,
@@ -379,13 +379,43 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
       mapel.toLowerCase().includes(m.nama.toLowerCase())
   );
 
-  const matchingCPTP = cptpList.filter((c) => {
-    if (selectedMapelObj && c.mapel_kode.toUpperCase() === selectedMapelObj.kode.toUpperCase())
-      return true;
-    if (c.mapel_kode.toLowerCase() === mapel.toLowerCase()) return true;
-    if (mapel.toLowerCase().includes(c.mapel_kode.toLowerCase())) return true;
-    return false;
-  });
+  const matchingCPTP = useMemo(() => {
+    return cptpList.filter((c) => {
+      if (selectedMapelObj) {
+        return c.mapel_kode.toUpperCase() === selectedMapelObj.kode.toUpperCase();
+      }
+      return c.mapel_kode.toLowerCase() === mapel.toLowerCase();
+    });
+  }, [cptpList, selectedMapelObj, mapel]);
+
+  const matchingCPTPGroupedByElemen = useMemo(() => {
+    const groups = new Map<string, KurikulumCPTP[]>();
+    const sorted = [...matchingCPTP].sort((a, b) => {
+      const faseCmp = (a.fase || '').localeCompare(b.fase || '');
+      if (faseCmp !== 0) return faseCmp;
+      return (a.elemen || '').localeCompare(b.elemen || '');
+    });
+    for (const item of sorted) {
+      const elemenKey = (item.elemen || 'Umum / Lainnya').trim();
+      const bucket = groups.get(elemenKey) || [];
+      bucket.push(item);
+      groups.set(elemenKey, bucket);
+    }
+    return Array.from(groups.entries());
+  }, [matchingCPTP]);
+
+  const otherCPTP = useMemo(() => {
+    const matchIds = new Set(matchingCPTP.map((m) => m.id));
+    return cptpList.filter((c) => !matchIds.has(c.id));
+  }, [cptpList, matchingCPTP]);
+
+  const selectedCPTPItem = useMemo(() => {
+    if (!materi) return undefined;
+    return (
+      matchingCPTP.find((c) => (c.materi_pokok || c.elemen) === materi) ||
+      cptpList.find((c) => (c.materi_pokok || c.elemen) === materi)
+    );
+  }, [materi, matchingCPTP, cptpList]);
 
   const handleApplyCPTP = (item: KurikulumCPTP) => {
     const chosenMateri = item.materi_pokok || item.elemen || '';
@@ -977,11 +1007,10 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                     const newMapel = e.target.value;
                     setMapel(newMapel);
                     const mObj = mapelList.find((m) => m.nama === newMapel || m.kode === newMapel);
-                    const found = cptpList.find(
-                      (c) =>
-                        (mObj && c.mapel_kode.toUpperCase() === mObj.kode.toUpperCase()) ||
-                        c.mapel_kode.toLowerCase() === newMapel.toLowerCase() ||
-                        newMapel.toLowerCase().includes(c.mapel_kode.toLowerCase())
+                    const found = cptpList.find((c) =>
+                      mObj
+                        ? c.mapel_kode.toUpperCase() === mObj.kode.toUpperCase()
+                        : c.mapel_kode.toLowerCase() === newMapel.toLowerCase()
                     );
                     if (found) {
                       handleApplyCPTP(found);
@@ -1032,7 +1061,9 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       setIsManualMateriMode(true);
                       return;
                     }
-                    const found = cptpList.find((c) => (c.materi_pokok || c.elemen) === val);
+                    const found =
+                      matchingCPTP.find((c) => (c.materi_pokok || c.elemen) === val) ||
+                      cptpList.find((c) => (c.materi_pokok || c.elemen) === val);
                     if (found) {
                       handleApplyCPTP(found);
                     } else {
@@ -1043,24 +1074,22 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                   className="w-full px-3.5 py-2.5 rounded-xl border border-blue-400 bg-blue-50/30 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
                 >
                   <option value="">-- Pilih Materi Pokok ({mapel}) --</option>
-                  {matchingCPTP.length > 0 && (
-                    <optgroup label={`Materi Mapel ${mapel}`}>
-                      {matchingCPTP.map((item) => (
+                  {matchingCPTPGroupedByElemen.map(([elemenName, items]) => (
+                    <optgroup key={elemenName} label={`Elemen: ${elemenName}`}>
+                      {items.map((item) => (
                         <option key={item.id} value={item.materi_pokok || item.elemen}>
-                          {item.materi_pokok || item.elemen} (Fase {item.fase})
+                          {item.materi_pokok || item.elemen} (Fase {item.fase} · Elemen: {item.elemen || 'Umum'})
                         </option>
                       ))}
                     </optgroup>
-                  )}
-                  {cptpList.filter((c) => !matchingCPTP.some((m) => m.id === c.id)).length > 0 && (
+                  ))}
+                  {otherCPTP.length > 0 && (
                     <optgroup label="Materi Mapel Lainnya">
-                      {cptpList
-                        .filter((c) => !matchingCPTP.some((m) => m.id === c.id))
-                        .map((item) => (
-                          <option key={item.id} value={item.materi_pokok || item.elemen}>
-                            [{item.mapel_kode}] {item.materi_pokok || item.elemen}
-                          </option>
-                        ))}
+                      {otherCPTP.map((item) => (
+                        <option key={item.id} value={item.materi_pokok || item.elemen}>
+                          [{item.mapel_kode}] {item.materi_pokok || item.elemen} (Fase {item.fase}{item.elemen ? ` · Elemen: ${item.elemen}` : ''})
+                        </option>
+                      ))}
                     </optgroup>
                   )}
                   <option value="__custom__">+ Ketik materi secara manual...</option>
@@ -1078,8 +1107,8 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                 />
               )}
 
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
                   <CheckCircle2
                     className={`w-3.5 h-3.5 shrink-0 ${
                       cp || tp ? 'text-emerald-600' : 'text-slate-300'
@@ -1090,6 +1119,12 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       ? 'CP, TP & ATP terisi otomatis'
                       : 'CP, TP & ATP terisi otomatis saat memilih dari Bank Materi'}
                   </span>
+                  {selectedCPTPItem && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/80 text-[11px] font-semibold">
+                      Fase {selectedCPTPItem.fase}
+                      {selectedCPTPItem.elemen ? ` · Elemen: ${selectedCPTPItem.elemen}` : ''}
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -1745,11 +1780,11 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                             {mapelObj ? `${item.mapel_kode} · ${mapelObj.nama}` : item.mapel_kode}
                           </span>
                           <span aria-hidden="true">·</span>
-                          <span>Fase {item.fase}</span>
+                          <span className="font-semibold text-slate-700">Fase {item.fase}</span>
                           {item.elemen && (
                             <>
                               <span aria-hidden="true">·</span>
-                              <span>{item.elemen}</span>
+                              <span className="font-medium text-slate-700">Elemen: {item.elemen}</span>
                             </>
                           )}
                         </div>
