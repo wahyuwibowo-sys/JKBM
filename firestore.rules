@@ -135,7 +135,7 @@ service cloud.firestore {
           'sekolah', 'kepala_sekolah', 'nip_kepala_sekolah',
           'logo_url', 'logo_jatim_url', 'qr_code_ttd_url',
           'gas_web_app_url', 'spreadsheet_id', 'lock_timeout_ms',
-          'tahun_ajaran', 'semester', 'deleted_seed_ids', '_updatedAt'
+          'tahun_ajaran', 'semester', 'deleted_seed_ids', 'deleted_cptp_ids', '_updatedAt'
         ])
         && isValidString(data.sekolah, 1, 200)
         && isValidString(data.kepala_sekolah, 1, 200)
@@ -149,6 +149,23 @@ service cloud.firestore {
         && isValidOptionalString(data, 'tahun_ajaran', 50)
         && isValidOptionalString(data, 'semester', 30)
         && (!('deleted_seed_ids' in data) || (data.deleted_seed_ids is list && data.deleted_seed_ids.size() <= 20 && (data.deleted_seed_ids.size() == 0 || isValidString(data.deleted_seed_ids[0], 1, 128))))
+        && (!('deleted_cptp_ids' in data) || (data.deleted_cptp_ids is list && data.deleted_cptp_ids.size() <= 50 && (data.deleted_cptp_ids.size() == 0 || isValidString(data.deleted_cptp_ids[0], 1, 128))))
+        && isValidOptionalString(data, '_updatedAt', 64);
+    }
+
+    function isValidCPTP(data) {
+      return data.keys().hasAll(['id', 'mapel_kode', 'fase', 'elemen', 'cp', 'tp', 'atp'])
+        && data.keys().hasOnly([
+          'id', 'mapel_kode', 'fase', 'elemen', 'materi_pokok', 'cp', 'tp', 'atp', '_updatedAt'
+        ])
+        && isValidId(data.id)
+        && isValidString(data.mapel_kode, 1, 32)
+        && data.fase in ['E', 'F', 'E/F']
+        && isValidString(data.elemen, 0, 300)
+        && isValidOptionalString(data, 'materi_pokok', 1000)
+        && isValidString(data.cp, 0, 4000)
+        && isValidString(data.tp, 0, 4000)
+        && isValidString(data.atp, 0, 4000)
         && isValidOptionalString(data, '_updatedAt', 64);
     }
 
@@ -212,6 +229,27 @@ service cloud.firestore {
     match /test/{docId} {
       allow get: if isValidId(docId);
       allow list, write: if false;
+    }
+
+    // 7. Koleksi Bank CP, TP, ATP & Materi Pokok Pembelajaran
+    match /cptp/{cptpId} {
+      allow get: if isValidId(cptpId);
+      allow list: if resource.data.id is string
+        && resource.data.mapel_kode is string
+        && resource.data.fase in ['E', 'F', 'E/F'];
+
+      allow create: if isValidId(cptpId)
+        && incoming().id == cptpId
+        && isValidCPTP(incoming());
+
+      allow update: if isValidId(cptpId)
+        && incoming().id == existing().id
+        && isValidCPTP(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'mapel_kode', 'fase', 'elemen', 'materi_pokok', 'cp', 'tp', 'atp', '_updatedAt'
+        ]);
+
+      allow delete: if isValidId(cptpId);
     }
   }
 }

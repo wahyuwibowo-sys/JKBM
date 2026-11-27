@@ -36,6 +36,8 @@ import {
   flushPendingJurnalSyncs,
   loadConfigFromFirebase,
   syncUsersFromFirebase,
+  subscribeToFirestoreCPTP,
+  flushPendingCptpSyncs,
 } from './services/firebaseService';
 
 export default function App() {
@@ -98,14 +100,25 @@ export default function App() {
     });
 
     flushPendingJurnalSyncs().catch(() => {});
+    flushPendingCptpSyncs().catch(() => {});
+
+    const unsubscribeCPTP = subscribeToFirestoreCPTP(
+      () => StorageService.getCPTPList(),
+      (list) => StorageService.saveCPTPList(list),
+      (merged) => {
+        if (active) setCptpList(merged);
+      }
+    );
 
     const handleOnline = () => {
       flushPendingJurnalSyncs().catch(() => {});
+      flushPendingCptpSyncs().catch(() => {});
     };
     window.addEventListener('online', handleOnline);
 
     return () => {
       active = false;
+      unsubscribeCPTP();
       window.removeEventListener('online', handleOnline);
     };
   }, []);
@@ -136,6 +149,7 @@ export default function App() {
   const handleSelectUser = (user: User) => {
     StorageService.setActiveSession(user);
     setCurrentUser(user);
+    setCptpList(StorageService.getCPTPList());
     if (user.role === 'guru') {
       setCurrentTab('guru-dashboard');
     } else if (user.role === 'kepsek') {
@@ -149,6 +163,7 @@ export default function App() {
   const handleLoginSuccess = (user: User) => {
     StorageService.setActiveSession(user);
     setCurrentUser(user);
+    setCptpList(StorageService.getCPTPList());
     if (user.role === 'guru') {
       setCurrentTab('guru-dashboard');
     } else if (user.role === 'kepsek') {

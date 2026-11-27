@@ -193,9 +193,67 @@
           "type": "array",
           "description": "Daftar ID jurnal contoh bawaan yang telah dibersihkan Admin"
         },
+        "deleted_cptp_ids": {
+          "type": "array",
+          "description": "Daftar ID Bank CP/TP contoh bawaan yang telah dihapus Admin"
+        },
         "_updatedAt": { "type": "string", "format": "date-time", "maxLength": 64 }
       },
       "required": ["sekolah", "kepala_sekolah", "nip_kepala_sekolah"]
+    },
+    "KurikulumCPTP": {
+      "title": "KurikulumCPTP",
+      "description": "Item Bank CP, TP, ATP, Elemen, dan Materi Pokok Pembelajaran per mata pelajaran",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID unik item CP/TP/Materi (e.g. CPTP-01 atau CPTP-173...)",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "mapel_kode": {
+          "type": "string",
+          "description": "Kode mata pelajaran (e.g. INF, MPKK, PABP)",
+          "maxLength": 32
+        },
+        "fase": {
+          "type": "string",
+          "enum": ["E", "F", "E/F"],
+          "description": "Fase Kurikulum Merdeka"
+        },
+        "elemen": {
+          "type": "string",
+          "description": "Elemen kurikulum mata pelajaran",
+          "maxLength": 300
+        },
+        "materi_pokok": {
+          "type": "string",
+          "description": "Materi pokok pembelajaran untuk dipilih guru di jurnal",
+          "maxLength": 1000
+        },
+        "cp": {
+          "type": "string",
+          "description": "Capaian Pembelajaran (CP)",
+          "maxLength": 4000
+        },
+        "tp": {
+          "type": "string",
+          "description": "Tujuan Pembelajaran (TP)",
+          "maxLength": 4000
+        },
+        "atp": {
+          "type": "string",
+          "description": "Alur Tujuan Pembelajaran (ATP)",
+          "maxLength": 4000
+        },
+        "_updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "mapel_kode", "fase", "elemen", "cp", "tp", "atp"]
     }
   },
   "firestore": {
@@ -210,6 +268,10 @@
     "/config/main": {
       "schema": { "$ref": "#/entities/AppConfig" },
       "description": "Dokumen konfigurasi global sekolah dan tautan Google Spreadsheet"
+    },
+    "/cptp/{cptpId}": {
+      "schema": { "$ref": "#/entities/KurikulumCPTP" },
+      "description": "Koleksi Bank CP, TP, ATP, dan Materi Pokok Pembelajaran SMKN 1 Sidayu"
     }
   }
 }

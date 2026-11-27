@@ -134,4 +134,5 @@ export interface AppConfig {
   tahun_ajaran?: string;
   semester?: string;
   deleted_seed_ids?: string[];
+  deleted_cptp_ids?: string[];
 }

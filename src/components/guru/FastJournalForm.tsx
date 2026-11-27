@@ -371,13 +371,18 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
     setTemplateNotice(`Disalin dari jurnal terakhir (${lastJournal.kelas})`);
   };
 
-  const selectedMapelObj = mapelList.find(
-    (m) =>
-      m.nama.toLowerCase() === mapel.toLowerCase() ||
-      m.kode.toLowerCase() === mapel.toLowerCase() ||
-      m.nama.toLowerCase().includes(mapel.toLowerCase()) ||
-      mapel.toLowerCase().includes(m.nama.toLowerCase())
-  );
+  const selectedMapelObj =
+    mapelList.find(
+      (m) =>
+        m.nama.toLowerCase() === mapel.trim().toLowerCase() ||
+        m.kode.toLowerCase() === mapel.trim().toLowerCase()
+    ) ||
+    mapelList.find(
+      (m) =>
+        mapel.trim().length >= 3 &&
+        (m.nama.toLowerCase().includes(mapel.trim().toLowerCase()) ||
+          mapel.trim().toLowerCase().includes(m.nama.toLowerCase()))
+    );
 
   const matchingCPTP = useMemo(() => {
     return cptpList.filter((c) => {

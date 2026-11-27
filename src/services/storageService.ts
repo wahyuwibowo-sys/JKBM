@@ -33,6 +33,8 @@ import {
   getDeletedSeedIds,
   addDeletedSeedIds,
   SEED_JURNAL_IDS,
+  getDeletedSeedCptpIds,
+  SEED_CPTP_IDS,
 } from './firebaseService';
 import { GasService } from './gasService';
 import { formatNip, normalizeNip } from '../utils/nipFormatter';
@@ -488,14 +490,22 @@ export class StorageService {
 
   // CP / TP / ATP
   static getCPTPList(): KurikulumCPTP[] {
+    const deletedSeeds = new Set(getDeletedSeedCptpIds());
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CP_TP);
       if (data) {
-        const parsed: KurikulumCPTP[] = JSON.parse(data);
-        const existingIds = new Set(parsed.map((p) => p.id));
+        const parsedRaw: KurikulumCPTP[] = JSON.parse(data);
         let modified = false;
+        const parsed = parsedRaw.filter((item) => {
+          if (item?.id && SEED_CPTP_IDS.has(item.id) && deletedSeeds.has(item.id)) {
+            modified = true;
+            return false;
+          }
+          return true;
+        });
+        const existingIds = new Set(parsed.map((p) => p.id));
         INITIAL_CP_TP.forEach((init) => {
-          if (!existingIds.has(init.id)) {
+          if (!existingIds.has(init.id) && !deletedSeeds.has(init.id)) {
             parsed.push(init);
             modified = true;
           }
@@ -505,10 +515,11 @@ export class StorageService {
         }
         return parsed;
       }
-      localStorage.setItem(STORAGE_KEYS.CP_TP, JSON.stringify(INITIAL_CP_TP));
-      return INITIAL_CP_TP;
+      const initialFiltered = INITIAL_CP_TP.filter((init) => !deletedSeeds.has(init.id));
+      localStorage.setItem(STORAGE_KEYS.CP_TP, JSON.stringify(initialFiltered));
+      return initialFiltered;
     } catch {
-      return INITIAL_CP_TP;
+      return INITIAL_CP_TP.filter((init) => !deletedSeeds.has(init.id));
     }
   }
 

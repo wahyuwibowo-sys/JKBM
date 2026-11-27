@@ -16,12 +16,13 @@ import {
   limit,
   getDocs,
   onSnapshot,
+  deleteDoc,
   Firestore,
   Query,
   DocumentData,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { AppConfig, DeepLearningData, JurnalPembelajaran, User, UserRole } from '../types';
+import { AppConfig, DeepLearningData, JurnalPembelajaran, KurikulumCPTP, User, UserRole } from '../types';
 import { auth } from './googleAuthService';
 
 // Initialize Firebase App (singleton)
@@ -130,6 +131,44 @@ export function addDeletedSeedIds(ids: string[]): string[] {
   const next = Array.from(existing).slice(0, 20);
   try {
     localStorage.setItem(DELETED_SEEDS_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
+}
+
+const DELETED_CPTP_SEEDS_KEY = 'ejurnal_deleted_seed_cptp_v1';
+const PENDING_CPTP_QUEUE_KEY = 'ejurnal_pending_cptp_sync_v1';
+const KNOWN_CLOUD_CPTP_KEY = 'ejurnal_known_cloud_cptp_v1';
+export const SEED_CPTP_IDS = new Set([
+  'CPTP-01',
+  'CPTP-02',
+  'CPTP-03',
+  'CPTP-04',
+  'CPTP-05',
+  'CPTP-06',
+  'CPTP-07',
+  'CPTP-08',
+]);
+
+export function getDeletedSeedCptpIds(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_CPTP_SEEDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedSeedCptpIds(ids: string[]): string[] {
+  const existing = new Set(getDeletedSeedCptpIds());
+  ids.forEach((id) => {
+    if (SEED_CPTP_IDS.has(id)) {
+      existing.add(id);
+    }
+  });
+  const next = Array.from(existing).slice(0, 50);
+  try {
+    localStorage.setItem(DELETED_CPTP_SEEDS_KEY, JSON.stringify(next));
   } catch {}
   return next;
 }
@@ -648,6 +687,12 @@ export async function syncConfigToFirebase(config: AppConfig): Promise<boolean> 
       .slice(0, 20)
       .map((id) => clampString(id, 128));
   }
+  if (Array.isArray(config.deleted_cptp_ids)) {
+    payload.deleted_cptp_ids = config.deleted_cptp_ids
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      .slice(0, 50)
+      .map((id) => clampString(id, 128));
+  }
 
   try {
     await setDoc(doc(db, 'config', 'main'), payload, { merge: true });
@@ -688,6 +733,10 @@ export async function loadConfigFromFirebase(
     if (Array.isArray(remote.deleted_seed_ids)) {
       patch.deleted_seed_ids = remote.deleted_seed_ids;
       addDeletedSeedIds(remote.deleted_seed_ids);
+    }
+    if (Array.isArray(remote.deleted_cptp_ids)) {
+      patch.deleted_cptp_ids = remote.deleted_cptp_ids;
+      addDeletedSeedCptpIds(remote.deleted_cptp_ids);
     }
     return saveConfigFn(patch);
   } catch (error) {
@@ -886,6 +935,317 @@ export async function syncLocalAndFirestoreJurnals(
       } catch {}
     }
     return getLocalJournals();
+  }
+}
+
+// =====================================================================
+// BANK CP, TP, ATP & MATERI POKOK (/cptp/{cptpId}) REALTIME SYNC
+// =====================================================================
+
+const VALID_CPTP_FASES = new Set(['E', 'F', 'E/F']);
+
+export function sanitizeCPTPForFirestore(
+  item: KurikulumCPTP
+): KurikulumCPTP & { _updatedAt: string } {
+  const cleanId = clampString(item.id || `CPTP-${Date.now()}`, 128).replace(/[^a-zA-Z0-9_\-]/g, '-');
+  const faseVal = VALID_CPTP_FASES.has(item.fase) ? item.fase : 'F';
+
+  const sanitized: KurikulumCPTP & { _updatedAt: string } = {
+    id: cleanId || `CPTP-${Date.now()}`,
+    mapel_kode: clampString((item.mapel_kode || 'UMUM').trim().toUpperCase(), 32) || 'UMUM',
+    fase: faseVal,
+    elemen: clampString((item.elemen || '').trim(), 300),
+    cp: clampString((item.cp || '').trim(), 4000),
+    tp: clampString((item.tp || '').trim(), 4000),
+    atp: clampString((item.atp || '').trim(), 4000),
+    _updatedAt: new Date().toISOString(),
+  };
+
+  if (typeof item.materi_pokok === 'string') {
+    sanitized.materi_pokok = clampString(item.materi_pokok.trim(), 1000);
+  }
+
+  return sanitized;
+}
+
+function getPendingCptpQueue(): Record<string, KurikulumCPTP> {
+  try {
+    const raw = localStorage.getItem(PENDING_CPTP_QUEUE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePendingCptpQueue(queue: Record<string, KurikulumCPTP>): void {
+  try {
+    localStorage.setItem(PENDING_CPTP_QUEUE_KEY, JSON.stringify(queue));
+  } catch {}
+}
+
+function enqueuePendingCptpSync(item: KurikulumCPTP): void {
+  if (!item?.id) return;
+  const queue = getPendingCptpQueue();
+  queue[item.id] = item;
+  savePendingCptpQueue(queue);
+}
+
+function dequeuePendingCptpSync(cptpId: string): void {
+  if (!cptpId) return;
+  const queue = getPendingCptpQueue();
+  if (cptpId in queue) {
+    delete queue[cptpId];
+    savePendingCptpQueue(queue);
+  }
+}
+
+function getKnownCloudCptpIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(KNOWN_CLOUD_CPTP_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function addKnownCloudCptpIds(ids: string[]): void {
+  if (ids.length === 0) return;
+  const known = getKnownCloudCptpIds();
+  let changed = false;
+  for (const id of ids) {
+    if (!known.has(id)) {
+      known.add(id);
+      changed = true;
+    }
+  }
+  if (changed) {
+    try {
+      localStorage.setItem(KNOWN_CLOUD_CPTP_KEY, JSON.stringify(Array.from(known).slice(-500)));
+    } catch {}
+  }
+}
+
+function removeKnownCloudCptpId(id: string): void {
+  const known = getKnownCloudCptpIds();
+  if (known.delete(id)) {
+    try {
+      localStorage.setItem(KNOWN_CLOUD_CPTP_KEY, JSON.stringify(Array.from(known)));
+    } catch {}
+  }
+}
+
+export async function syncCPTPToFirebase(item: KurikulumCPTP): Promise<boolean> {
+  if (!item || !item.id) return false;
+  const payload = sanitizeCPTPForFirestore(item);
+  enqueuePendingCptpSync(payload);
+  const path = `cptp/${payload.id}`;
+
+  try {
+    await setDoc(doc(db, 'cptp', payload.id), payload, { merge: true });
+    dequeuePendingCptpSync(payload.id);
+    addKnownCloudCptpIds([payload.id]);
+    return true;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+      try {
+        handleFirestoreError(error, OperationType.WRITE, path);
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+export async function syncCPTPBatchToFirebase(items: KurikulumCPTP[]): Promise<number> {
+  if (!items || items.length === 0) return 0;
+  let synced = 0;
+  const CHUNK_SIZE = 300;
+
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    const chunk = items.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(db);
+    const sanitizedList: Array<KurikulumCPTP & { _updatedAt: string }> = [];
+
+    for (const item of chunk) {
+      if (!item?.id) continue;
+      const clean = sanitizeCPTPForFirestore(item);
+      sanitizedList.push(clean);
+      batch.set(doc(db, 'cptp', clean.id), clean, { merge: true });
+    }
+
+    if (sanitizedList.length === 0) continue;
+
+    try {
+      await batch.commit();
+      for (const item of sanitizedList) {
+        dequeuePendingCptpSync(item.id);
+      }
+      addKnownCloudCptpIds(sanitizedList.map((s) => s.id));
+      synced += sanitizedList.length;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+        try {
+          handleFirestoreError(error, OperationType.WRITE, 'cptp');
+        } catch {
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  return synced;
+}
+
+export async function deleteCPTPFromFirebase(cptpId: string): Promise<boolean> {
+  if (!cptpId) return false;
+  dequeuePendingCptpSync(cptpId);
+  removeKnownCloudCptpId(cptpId);
+
+  const cleanId = clampString(cptpId, 128).replace(/[^a-zA-Z0-9_\-]/g, '-');
+  if (!cleanId) return false;
+
+  try {
+    await deleteDoc(doc(db, 'cptp', cleanId));
+    return true;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+      try {
+        handleFirestoreError(error, OperationType.DELETE, `cptp/${cleanId}`);
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+export async function flushPendingCptpSyncs(): Promise<number> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 0;
+  const queue = getPendingCptpQueue();
+  const items = Object.values(queue);
+  if (items.length === 0) return 0;
+
+  let flushed = 0;
+  for (const item of items) {
+    const ok = await syncCPTPToFirebase(item);
+    if (ok) flushed++;
+    else break;
+  }
+  return flushed;
+}
+
+export function subscribeToFirestoreCPTP(
+  getLocalList: () => KurikulumCPTP[],
+  saveLocalList: (list: KurikulumCPTP[]) => void,
+  onUpdate: (mergedList: KurikulumCPTP[]) => void
+): () => void {
+  const path = 'cptp';
+  const queryLimit = 300;
+  let unpushedBackfillTriggered = false;
+
+  try {
+    const q = query(collection(db, path), limit(queryLimit));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const cloudItems: (KurikulumCPTP & { _updatedAt?: string })[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as KurikulumCPTP & { _updatedAt?: string };
+          if (data && data.id) {
+            cloudItems.push(data);
+          }
+        });
+
+        const removedIds = new Set<string>();
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'removed') {
+            removedIds.add(change.doc.id);
+            removeKnownCloudCptpId(change.doc.id);
+          }
+        });
+
+        const cloudIds = new Set(cloudItems.map((c) => c.id));
+        const pendingQueue = getPendingCptpQueue();
+        const deletedSeeds = new Set(getDeletedSeedCptpIds());
+        const knownCloudIds = getKnownCloudCptpIds();
+        const isExhaustiveServerSnapshot =
+          !snapshot.metadata.fromCache && cloudItems.length < queryLimit;
+
+        if (!snapshot.metadata.fromCache && cloudItems.length > 0) {
+          addKnownCloudCptpIds(cloudItems.map((c) => c.id));
+        }
+
+        const localItems = getLocalList();
+        const mergedMap = new Map<string, KurikulumCPTP>();
+        const unpushedLocalCustomItems: KurikulumCPTP[] = [];
+
+        for (const li of localItems) {
+          if (!li?.id) continue;
+          if (removedIds.has(li.id)) continue;
+          if (SEED_CPTP_IDS.has(li.id) && deletedSeeds.has(li.id)) continue;
+
+          if (isExhaustiveServerSnapshot && !cloudIds.has(li.id)) {
+            const isPending = li.id in pendingQueue;
+            const isUndeletedSeed = SEED_CPTP_IDS.has(li.id) && !deletedSeeds.has(li.id);
+            const wasPreviouslyOnCloud = knownCloudIds.has(li.id);
+            if (wasPreviouslyOnCloud && !isPending && !isUndeletedSeed) {
+              // Deleted from Firestore by Admin
+              continue;
+            }
+            if (!SEED_CPTP_IDS.has(li.id) && !wasPreviouslyOnCloud) {
+              unpushedLocalCustomItems.push(li);
+            }
+          }
+
+          mergedMap.set(li.id, li);
+        }
+
+        for (const ci of cloudItems) {
+          if (!ci?.id || removedIds.has(ci.id)) continue;
+          if (ci.id in pendingQueue) {
+            // Keep newer local pending edit until flushed
+            continue;
+          }
+          const { _updatedAt: _ignored, ...cleanItem } = ci;
+          mergedMap.set(ci.id, cleanItem);
+        }
+
+        const merged = Array.from(mergedMap.values());
+        saveLocalList(merged);
+        onUpdate(merged);
+
+        // Automatically backfill custom local CPTP items that Admin saved before cloud sync was enabled
+        if (
+          !snapshot.metadata.fromCache &&
+          !unpushedBackfillTriggered &&
+          unpushedLocalCustomItems.length > 0
+        ) {
+          unpushedBackfillTriggered = true;
+          syncCPTPBatchToFirebase(unpushedLocalCustomItems).catch(() => {});
+        }
+      },
+      (error) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+          try {
+            handleFirestoreError(error, OperationType.LIST, path);
+          } catch {}
+        } else if (isQuotaError(error)) {
+          console.warn('[Firebase] Kuota pembacaan harian Firestore tercapai; menampilkan Bank Materi lokal.');
+        } else {
+          console.warn('[Firebase] CPTP listener notice:', msg);
+        }
+      }
+    );
+  } catch (err) {
+    console.warn('[Firebase] Gagal mengaktifkan listener Bank CP/TP:', err);
+    return () => {};
   }
 }
 

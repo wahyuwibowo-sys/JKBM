@@ -10,7 +10,13 @@ import {
   UserRole,
 } from '../../types';
 import { StorageService } from '../../services/storageService';
-import { syncUserToFirebase } from '../../services/firebaseService';
+import {
+  syncUserToFirebase,
+  syncCPTPToFirebase,
+  deleteCPTPFromFirebase,
+  addDeletedSeedCptpIds,
+  SEED_CPTP_IDS,
+} from '../../services/firebaseService';
 import { formatNip } from '../../utils/nipFormatter';
 import { analyzeTPForATP, generateATPFromTP } from '../../utils/narrativeGenerator';
 import {
@@ -492,6 +498,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
     }
 
     StorageService.saveCPTPList(currentList);
+    syncCPTPToFirebase(payload).catch(() => {});
     onRefreshAllData();
     showSuccess(`Item Kurikulum & Materi "${payload.materi_pokok || payload.elemen || payload.id}" berhasil disimpan!`);
     resetCptpForm();
@@ -501,6 +508,12 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
     if (!window.confirm('Yakin ingin menghapus item CP/TP/Materi ini dari bank kurikulum?')) return;
     const currentList = StorageService.getCPTPList().filter((c) => c.id !== id);
     StorageService.saveCPTPList(currentList);
+    deleteCPTPFromFirebase(id).catch(() => {});
+    if (SEED_CPTP_IDS.has(id)) {
+      const deletedSeeds = addDeletedSeedCptpIds([id]);
+      const updatedCfg = StorageService.saveConfig({ deleted_cptp_ids: deletedSeeds });
+      onUpdateConfig(updatedCfg);
+    }
     onRefreshAllData();
     showSuccess('Item CP/TP/Materi berhasil dihapus.');
   };
