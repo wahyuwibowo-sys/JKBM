@@ -414,16 +414,23 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
     return cptpList.filter((c) => !matchIds.has(c.id));
   }, [cptpList, matchingCPTP]);
 
+  const getCptpLabel = (item: KurikulumCPTP): string => {
+    const primary = (item.materi_pokok || item.elemen || '').trim();
+    if (primary) return primary;
+    const fallback = (item.tp || item.cp || '').trim();
+    return fallback ? (fallback.length > 90 ? `${fallback.slice(0, 90)}...` : fallback) : `Materi (${item.mapel_kode})`;
+  };
+
   const selectedCPTPItem = useMemo(() => {
     if (!materi) return undefined;
     return (
-      matchingCPTP.find((c) => (c.materi_pokok || c.elemen) === materi) ||
-      cptpList.find((c) => (c.materi_pokok || c.elemen) === materi)
+      matchingCPTP.find((c) => getCptpLabel(c) === materi) ||
+      cptpList.find((c) => getCptpLabel(c) === materi)
     );
   }, [materi, matchingCPTP, cptpList]);
 
   const handleApplyCPTP = (item: KurikulumCPTP) => {
-    const chosenMateri = item.materi_pokok || item.elemen || '';
+    const chosenMateri = getCptpLabel(item);
     if (chosenMateri) {
       setMateri(chosenMateri);
     }
@@ -1067,8 +1074,8 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       return;
                     }
                     const found =
-                      matchingCPTP.find((c) => (c.materi_pokok || c.elemen) === val) ||
-                      cptpList.find((c) => (c.materi_pokok || c.elemen) === val);
+                      matchingCPTP.find((c) => getCptpLabel(c) === val) ||
+                      cptpList.find((c) => getCptpLabel(c) === val);
                     if (found) {
                       handleApplyCPTP(found);
                     } else {
@@ -1081,20 +1088,26 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                   <option value="">-- Pilih Materi Pokok ({mapel}) --</option>
                   {matchingCPTPGroupedByElemen.map(([elemenName, items]) => (
                     <optgroup key={elemenName} label={`Elemen: ${elemenName}`}>
-                      {items.map((item) => (
-                        <option key={item.id} value={item.materi_pokok || item.elemen}>
-                          {item.materi_pokok || item.elemen} (Fase {item.fase} · Elemen: {item.elemen || 'Umum'})
-                        </option>
-                      ))}
+                      {items.map((item) => {
+                        const labelText = getCptpLabel(item);
+                        return (
+                          <option key={item.id} value={labelText}>
+                            {labelText} (Fase {item.fase} · Elemen: {item.elemen || 'Umum'})
+                          </option>
+                        );
+                      })}
                     </optgroup>
                   ))}
                   {otherCPTP.length > 0 && (
                     <optgroup label="Materi Mapel Lainnya">
-                      {otherCPTP.map((item) => (
-                        <option key={item.id} value={item.materi_pokok || item.elemen}>
-                          [{item.mapel_kode}] {item.materi_pokok || item.elemen} (Fase {item.fase}{item.elemen ? ` · Elemen: ${item.elemen}` : ''})
-                        </option>
-                      ))}
+                      {otherCPTP.map((item) => {
+                        const labelText = getCptpLabel(item);
+                        return (
+                          <option key={item.id} value={labelText}>
+                            [{item.mapel_kode}] {labelText} (Fase {item.fase}{item.elemen ? ` · Elemen: ${item.elemen}` : ''})
+                          </option>
+                        );
+                      })}
                     </optgroup>
                   )}
                   <option value="__custom__">+ Ketik materi secara manual...</option>
@@ -1771,7 +1784,8 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                 })
                 .map((item) => {
                   const mapelObj = mapelList.find((m) => m.kode === item.mapel_kode);
-                  const isCurrentSelected = materi === (item.materi_pokok || item.elemen);
+                  const labelText = getCptpLabel(item);
+                  const isCurrentSelected = materi === labelText;
                   return (
                     <div
                       key={item.id}
@@ -1794,7 +1808,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                           )}
                         </div>
                         <div className="text-sm font-bold text-slate-900">
-                          {item.materi_pokok || item.elemen}
+                          {labelText}
                         </div>
                         {item.tp && (
                           <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">

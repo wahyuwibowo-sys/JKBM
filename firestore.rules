@@ -172,8 +172,7 @@ service cloud.firestore {
     // 3. Koleksi Jurnal KBM Guru SMKN 1 Sidayu
     match /jurnals/{jurnalId} {
       allow get: if isValidId(jurnalId);
-      allow list: if resource.data.id is string
-        && resource.data.status in ['Draft', 'Menunggu Validasi', 'Disetujui', 'Revisi'];
+      allow list: if resource.data.status in ['Draft', 'Menunggu Validasi', 'Disetujui', 'Revisi'];
 
       allow create: if isValidId(jurnalId)
         && incoming().id == jurnalId
@@ -197,7 +196,7 @@ service cloud.firestore {
     // 4. Koleksi Profil Dewan Guru & Pimpinan (Tanpa Password)
     match /users/{userId} {
       allow get: if isValidId(userId);
-      allow list: if resource.data.id is string && resource.data.role in ['guru', 'kepsek', 'admin'];
+      allow list: if resource.data.role in ['guru', 'kepsek', 'admin'];
 
       allow create: if isValidId(userId)
         && incoming().id == userId
@@ -234,9 +233,7 @@ service cloud.firestore {
     // 7. Koleksi Bank CP, TP, ATP & Materi Pokok Pembelajaran
     match /cptp/{cptpId} {
       allow get: if isValidId(cptpId);
-      allow list: if resource.data.id is string
-        && resource.data.mapel_kode is string
-        && resource.data.fase in ['E', 'F', 'E/F'];
+      allow list: if resource.data.fase in ['E', 'F', 'E/F'];
 
       allow create: if isValidId(cptpId)
         && incoming().id == cptpId

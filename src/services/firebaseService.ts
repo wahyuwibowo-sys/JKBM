@@ -12,7 +12,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   limit,
   getDocs,
   onSnapshot,
@@ -488,7 +487,13 @@ export async function deleteAllJurnalsFromFirebase(): Promise<{ deletedCount: nu
 
   try {
     while (true) {
-      const snap = await getDocs(query(collection(db, 'jurnals'), limit(CHUNK_SIZE)));
+      const snap = await getDocs(
+        query(
+          collection(db, 'jurnals'),
+          where('status', 'in', ['Draft', 'Menunggu Validasi', 'Disetujui', 'Revisi']),
+          limit(CHUNK_SIZE)
+        )
+      );
       if (snap.empty) break;
 
       const batch = writeBatch(db);
@@ -590,7 +595,11 @@ export async function syncUsersFromFirebase(
 ): Promise<User[]> {
   const path = 'users';
   try {
-    const q = query(collection(db, path), limit(150));
+    const q = query(
+      collection(db, path),
+      where('role', 'in', ['guru', 'kepsek', 'admin']),
+      limit(150)
+    );
     const snap = await getDocs(q);
     if (snap.empty) return currentUsers;
 
@@ -757,27 +766,17 @@ export interface JournalScope {
   gelar?: string;
 }
 
-function getQueryLimitForScope(scope: JournalScope): number {
-  if (scope.role === 'kepsek' || scope.role === 'admin') return 400;
-  const cleanNip = cleanNipValue(scope.nip);
-  if ((cleanNip && cleanNip !== '-') || `${scope.nama || ''}`.trim()) return 150;
-  return 50;
+function getQueryLimitForScope(_scope: JournalScope): number {
+  return 400;
 }
 
-function buildScopedJournalQuery(scope: JournalScope): Query<DocumentData> {
+function buildScopedJournalQuery(_scope: JournalScope): Query<DocumentData> {
   const colRef = collection(db, 'jurnals');
-  if (scope.role === 'kepsek' || scope.role === 'admin') {
-    return query(colRef, orderBy('timestamp', 'desc'), limit(400));
-  }
-  const cleanNip = cleanNipValue(scope.nip);
-  if (cleanNip && cleanNip !== '-') {
-    return query(colRef, where('guru_nip', '==', cleanNip), limit(150));
-  }
-  const fullNama = `${scope.nama || ''}${scope.gelar ? `, ${scope.gelar}` : ''}`.trim();
-  if (fullNama) {
-    return query(colRef, where('guru_nama', '==', fullNama), limit(150));
-  }
-  return query(colRef, orderBy('timestamp', 'desc'), limit(50));
+  return query(
+    colRef,
+    where('status', 'in', ['Draft', 'Menunggu Validasi', 'Disetujui', 'Revisi']),
+    limit(400)
+  );
 }
 
 function mergeCloudAndLocalJournals(
@@ -1150,7 +1149,11 @@ export function subscribeToFirestoreCPTP(
   let unpushedBackfillTriggered = false;
 
   try {
-    const q = query(collection(db, path), limit(queryLimit));
+    const q = query(
+      collection(db, path),
+      where('fase', 'in', ['E', 'F', 'E/F']),
+      limit(queryLimit)
+    );
     return onSnapshot(
       q,
       (snapshot) => {
