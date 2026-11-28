@@ -149,7 +149,7 @@ service cloud.firestore {
         && isValidOptionalString(data, 'tahun_ajaran', 50)
         && isValidOptionalString(data, 'semester', 30)
         && (!('deleted_seed_ids' in data) || (data.deleted_seed_ids is list && data.deleted_seed_ids.size() <= 20 && (data.deleted_seed_ids.size() == 0 || isValidString(data.deleted_seed_ids[0], 1, 128))))
-        && (!('deleted_cptp_ids' in data) || (data.deleted_cptp_ids is list && data.deleted_cptp_ids.size() <= 50 && (data.deleted_cptp_ids.size() == 0 || isValidString(data.deleted_cptp_ids[0], 1, 128))))
+        && (!('deleted_cptp_ids' in data) || (data.deleted_cptp_ids is list && data.deleted_cptp_ids.size() <= 300 && (data.deleted_cptp_ids.size() == 0 || isValidString(data.deleted_cptp_ids[0], 1, 128))))
         && isValidOptionalString(data, '_updatedAt', 64);
     }
 

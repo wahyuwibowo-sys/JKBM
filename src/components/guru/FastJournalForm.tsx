@@ -212,7 +212,6 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
   );
   const [isManualMateriMode, setIsManualMateriMode] = useState<boolean>(false);
   const [cptpModalSearch, setCptpModalSearch] = useState<string>('');
-  const [cptpModalFilter, setCptpModalFilter] = useState<'current' | 'all'>('current');
 
   const currentKelasObj = kelasList.find((k) => k.nama === kelas);
   const totalSiswaDefault = currentKelasObj?.jumlah_siswa || 36;
@@ -409,11 +408,6 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
     return Array.from(groups.entries());
   }, [matchingCPTP]);
 
-  const otherCPTP = useMemo(() => {
-    const matchIds = new Set(matchingCPTP.map((m) => m.id));
-    return cptpList.filter((c) => !matchIds.has(c.id));
-  }, [cptpList, matchingCPTP]);
-
   const getCptpLabel = (item: KurikulumCPTP): string => {
     const primary = (item.materi_pokok || item.elemen || '').trim();
     if (primary) return primary;
@@ -423,13 +417,16 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
 
   const selectedCPTPItem = useMemo(() => {
     if (!materi) return undefined;
-    return (
-      matchingCPTP.find((c) => getCptpLabel(c) === materi) ||
-      cptpList.find((c) => getCptpLabel(c) === materi)
-    );
-  }, [materi, matchingCPTP, cptpList]);
+    return matchingCPTP.find((c) => getCptpLabel(c) === materi);
+  }, [materi, matchingCPTP]);
 
   const handleApplyCPTP = (item: KurikulumCPTP) => {
+    const itemMapel = mapelList.find(
+      (m) => m.kode.toUpperCase() === item.mapel_kode.toUpperCase()
+    );
+    if (itemMapel && itemMapel.nama !== mapel) {
+      setMapel(itemMapel.nama);
+    }
     const chosenMateri = getCptpLabel(item);
     if (chosenMateri) {
       setMateri(chosenMateri);
@@ -941,28 +938,62 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
           <div className="p-5 sm:p-6 space-y-5">
             {teacherJadwal.length > 0 && (
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2">
-                  Pilih Cepat dari Jadwal Anda
-                </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <label className="block text-sm sm:text-xs font-bold sm:font-semibold text-slate-800 sm:text-slate-700">
+                    Pilih Cepat dari Jadwal Anda
+                  </label>
+                  <span className="text-xs font-medium text-slate-500 tabular-nums">
+                    {teacherJadwal.length} Jadwal
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {teacherJadwal.map((j) => {
                     const isActive = selectedJadwalId === j.id;
+                    const rawJam = (j.jam_ke || '').trim();
+                    const jamLabel = /^jam\b/i.test(rawJam) ? rawJam : `Jam ${rawJam}`;
                     return (
                       <button
                         key={j.id}
                         type="button"
                         onClick={() => handleJadwalChange(j.id)}
-                        className={`px-3 py-2 rounded-xl border text-xs transition-colors cursor-pointer flex items-center gap-2 ${
+                        title={`${j.kelas} · ${j.hari}, ${jamLabel} · ${j.mapel_nama}`}
+                        className={`min-h-[44px] w-full text-left px-3.5 py-2.5 rounded-xl border transition-colors cursor-pointer flex flex-col justify-between gap-1 ${
                           isActive
-                            ? 'border-blue-600 bg-blue-50 text-blue-900 font-semibold'
-                            : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                            ? 'border-blue-600 bg-blue-50/70 ring-1 ring-blue-600/20'
+                            : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60'
                         }`}
                       >
-                        <span className="font-bold">{j.kelas}</span>
-                        <span aria-hidden="true" className="text-slate-300">·</span>
-                        <span className="text-slate-500">{j.hari}, Jam {j.jam_ke}</span>
-                        <span aria-hidden="true" className="text-slate-300">·</span>
-                        <span className="truncate max-w-[180px]">{j.mapel_nama}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`text-sm sm:text-[13px] font-bold tracking-tight ${
+                              isActive ? 'text-blue-900' : 'text-slate-900'
+                            }`}
+                          >
+                            {j.kelas}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 text-xs font-semibold shrink-0 ${
+                              isActive ? 'text-blue-700' : 'text-slate-500'
+                            }`}
+                          >
+                            <span>{j.hari}</span>
+                            {isActive && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                          </span>
+                        </div>
+                        <div
+                          className={`text-sm sm:text-xs font-medium leading-snug line-clamp-1 ${
+                            isActive ? 'text-blue-950' : 'text-slate-700'
+                          }`}
+                        >
+                          {j.mapel_nama}
+                        </div>
+                        <div
+                          className={`text-xs tabular-nums leading-snug ${
+                            isActive ? 'text-blue-700' : 'text-slate-500'
+                          }`}
+                        >
+                          {jamLabel}
+                        </div>
                       </button>
                     );
                   })}
@@ -972,20 +1003,20 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal</label>
+                <label className="block text-sm sm:text-xs font-semibold text-slate-800 sm:text-slate-700 mb-1.5">Tanggal</label>
                 <div className="relative">
                   <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="date"
                     value={tanggal}
                     onChange={(e) => setTanggal(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden bg-white"
+                    className="w-full min-h-[46px] sm:min-h-0 pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Kelas</label>
+                <label className="block text-sm sm:text-xs font-semibold text-slate-800 sm:text-slate-700 mb-1.5">Kelas</label>
                 <select
                   value={kelas}
                   onChange={(e) => {
@@ -999,7 +1030,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       setAlpa(0);
                     }
                   }}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden bg-white"
+                  className="w-full min-h-[46px] sm:min-h-0 px-3 py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden bg-white"
                 >
                   {kelasList.map((k) => (
                     <option key={k.id} value={k.nama}>
@@ -1010,7 +1041,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-sm sm:text-xs font-semibold text-slate-800 sm:text-slate-700 mb-1.5">
                   Mata Pelajaran
                 </label>
                 <select
@@ -1026,9 +1057,16 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                     );
                     if (found) {
                       handleApplyCPTP(found);
+                    } else {
+                      setMateri('');
+                      setCp('');
+                      setTp('');
+                      setAtp('');
+                      setIsManualMateriMode(false);
+                      setErrorMessage(null);
                     }
                   }}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden bg-white"
+                  className="w-full min-h-[46px] sm:min-h-0 px-3 py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden bg-white"
                 >
                   {mapelList.map((m) => (
                     <option key={m.kode} value={m.nama}>
@@ -1040,24 +1078,27 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
             </div>
 
             {/* Materi Pokok */}
-            <div ref={materiSectionRef} className="pt-4 border-t border-slate-100 space-y-2.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-slate-800">
+            <div ref={materiSectionRef} className="pt-4 border-t border-slate-100 space-y-3 sm:space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-2">
+                <label className="text-sm sm:text-xs font-bold sm:font-semibold text-slate-900 sm:text-slate-800">
                   Materi Pokok Pembelajaran <span className="text-rose-500">*</span>
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-2 sm:flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowCPTPModal(true)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 hover:text-blue-700 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                    onClick={() => {
+                      setCptpModalSearch('');
+                      setShowCPTPModal(true);
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-3.5 py-2 sm:px-2.5 sm:py-1.5 rounded-xl sm:rounded-lg border border-slate-300 sm:border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-800 sm:text-slate-700 hover:text-blue-700 text-sm sm:text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap bg-white"
                   >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>Bank Materi ({cptpList.length})</span>
+                    <BookOpen className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                    <span>Bank Materi ({matchingCPTP.length})</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsManualMateriMode(!isManualMateriMode)}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                    className="inline-flex items-center justify-center min-h-[44px] sm:min-h-0 px-3.5 py-2 sm:px-2.5 sm:py-1.5 rounded-xl sm:rounded-lg border border-slate-300 sm:border-slate-200 text-slate-700 sm:text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-sm sm:text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap bg-white"
                   >
                     {isManualMateriMode ? 'Pilih dari Daftar' : 'Ketik Manual'}
                   </button>
@@ -1065,53 +1106,63 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
               </div>
 
               {!isManualMateriMode ? (
-                <select
-                  value={materi}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '__custom__') {
-                      setIsManualMateriMode(true);
-                      return;
-                    }
-                    const found =
-                      matchingCPTP.find((c) => getCptpLabel(c) === val) ||
-                      cptpList.find((c) => getCptpLabel(c) === val);
-                    if (found) {
-                      handleApplyCPTP(found);
-                    } else {
-                      setMateri(val);
-                      setErrorMessage(null);
-                    }
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-blue-400 bg-blue-50/30 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
-                >
-                  <option value="">-- Pilih Materi Pokok ({mapel}) --</option>
-                  {matchingCPTPGroupedByElemen.map(([elemenName, items]) => (
-                    <optgroup key={elemenName} label={`Elemen: ${elemenName}`}>
-                      {items.map((item) => {
-                        const labelText = getCptpLabel(item);
-                        return (
-                          <option key={item.id} value={labelText}>
-                            {labelText} (Fase {item.fase} · Elemen: {item.elemen || 'Umum'})
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                  ))}
-                  {otherCPTP.length > 0 && (
-                    <optgroup label="Materi Mapel Lainnya">
-                      {otherCPTP.map((item) => {
-                        const labelText = getCptpLabel(item);
-                        return (
-                          <option key={item.id} value={labelText}>
-                            [{item.mapel_kode}] {labelText} (Fase {item.fase}{item.elemen ? ` · Elemen: ${item.elemen}` : ''})
-                          </option>
-                        );
-                      })}
-                    </optgroup>
+                <div className="space-y-2.5">
+                  <select
+                    value={materi}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') {
+                        setIsManualMateriMode(true);
+                        return;
+                      }
+                      const found = matchingCPTP.find((c) => getCptpLabel(c) === val);
+                      if (found) {
+                        handleApplyCPTP(found);
+                      } else {
+                        setMateri(val);
+                        setErrorMessage(null);
+                      }
+                    }}
+                    className="w-full min-h-[48px] sm:min-h-0 px-3.5 py-3 sm:py-2.5 rounded-xl border-2 border-blue-500/80 sm:border sm:border-blue-400 bg-white sm:bg-blue-50/30 text-base sm:text-sm font-semibold text-slate-950 leading-snug focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="">-- Pilih Materi Pokok ({mapel}) --</option>
+                    {materi.trim() && !selectedCPTPItem && (
+                      <option value={materi}>{materi} (Dari Jadwal / Riwayat)</option>
+                    )}
+                    {matchingCPTPGroupedByElemen.map(([elemenName, items]) => (
+                      <optgroup key={elemenName} label={`Elemen: ${elemenName}`}>
+                        {items.map((item) => {
+                          const labelText = getCptpLabel(item);
+                          return (
+                            <option key={item.id} value={labelText}>
+                              {labelText} (Fase {item.fase} · {item.elemen || 'Umum'})
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    ))}
+                    <option value="__custom__">+ Ketik materi secara manual...</option>
+                  </select>
+
+                  {materi.trim() && (
+                    <div className="p-3.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Materi Terpilih
+                        </span>
+                        {selectedCPTPItem && (
+                          <span className="text-[13px] sm:text-xs font-semibold text-blue-800">
+                            Fase {selectedCPTPItem.fase}
+                            {selectedCPTPItem.elemen ? ` · Elemen: ${selectedCPTPItem.elemen}` : ''}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[15px] sm:text-sm font-bold text-slate-950 leading-snug">
+                        {materi}
+                      </p>
+                    </div>
                   )}
-                  <option value="__custom__">+ Ketik materi secara manual...</option>
-                </select>
+                </div>
               ) : (
                 <input
                   type="text"
@@ -1121,14 +1172,14 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                     if (e.target.value.trim()) setErrorMessage(null);
                   }}
                   placeholder="Tuliskan materi pokok yang diajarkan hari ini..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white"
+                  className="w-full min-h-[48px] sm:min-h-0 px-3.5 py-3 sm:py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm font-medium text-slate-950 leading-snug focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white"
                 />
               )}
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-1.5 text-[13px] sm:text-xs text-slate-600 sm:text-slate-500 leading-snug">
                   <CheckCircle2
-                    className={`w-3.5 h-3.5 shrink-0 ${
+                    className={`w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0 ${
                       cp || tp ? 'text-emerald-600' : 'text-slate-300'
                     }`}
                   />
@@ -1138,7 +1189,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       : 'CP, TP & ATP terisi otomatis saat memilih dari Bank Materi'}
                   </span>
                   {selectedCPTPItem && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/80 text-[11px] font-semibold">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/80 text-xs sm:text-[11px] font-semibold">
                       Fase {selectedCPTPItem.fase}
                       {selectedCPTPItem.elemen ? ` · Elemen: ${selectedCPTPItem.elemen}` : ''}
                     </span>
@@ -1147,13 +1198,13 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowCPTPDetails(!showCPTPDetails)}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer shrink-0"
+                  className="min-h-[36px] sm:min-h-0 text-sm sm:text-xs font-semibold text-blue-700 sm:text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer shrink-0"
                 >
                   <span>{showCPTPDetails ? 'Tutup CP/TP' : 'Ubah CP & TP'}</span>
                   {showCPTPDetails ? (
-                    <ChevronUp className="w-3.5 h-3.5" />
+                    <ChevronUp className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5" />
+                    <ChevronDown className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                   )}
                 </button>
               </div>
@@ -1161,31 +1212,31 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
               {showCPTPDetails && (
                 <div className="pt-3 border-t border-slate-100 space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm sm:text-xs font-semibold text-slate-800 sm:text-slate-700 mb-1">
                       Capaian Pembelajaran (CP)
                     </label>
                     <textarea
-                      rows={2}
+                      rows={3}
                       value={cp}
                       onChange={(e) => setCp(e.target.value)}
                       placeholder="Capaian pembelajaran..."
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed"
+                      className="w-full p-3 sm:p-2.5 rounded-xl border border-slate-300 text-sm sm:text-xs text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm sm:text-xs font-semibold text-slate-800 sm:text-slate-700 mb-1">
                       Tujuan Pembelajaran (TP)
                     </label>
                     <textarea
-                      rows={2}
+                      rows={3}
                       value={tp}
                       onChange={(e) => setTp(e.target.value)}
                       placeholder="Tujuan pembelajaran..."
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed"
+                      className="w-full p-3 sm:p-2.5 rounded-xl border border-slate-300 text-sm sm:text-xs text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm sm:text-xs font-semibold text-slate-800 sm:text-slate-700 mb-1">
                       Alur Tujuan Pembelajaran (ATP)
                     </label>
                     <input
@@ -1193,7 +1244,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       value={atp}
                       onChange={(e) => setAtp(e.target.value)}
                       placeholder="Alur tujuan pembelajaran..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full min-h-[44px] sm:min-h-0 px-3 py-2.5 sm:py-2 rounded-xl border border-slate-300 text-sm sm:text-xs text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
                 </div>
@@ -1700,51 +1751,34 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
 
       {/* MODAL BANK MATERI & CP/TP */}
       {showCPTPModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
-            <div className="p-5 border-b border-slate-200 flex items-start justify-between gap-3">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]">
+            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
                   Pilih Materi dari Bank Kurikulum
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Klik "Pilih Materi" untuk mengisi Materi, CP, TP, dan ATP secara otomatis.
+                <p className="text-sm sm:text-xs text-slate-600 sm:text-slate-500 mt-0.5 leading-snug">
+                  Ketuk "Pilih Materi" untuk mengisi Materi, CP, TP, dan ATP secara otomatis.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCPTPModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                className="p-2 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
                 aria-label="Tutup modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setCptpModalFilter('current')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                    cptpModalFilter === 'current'
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Mapel Ini ({matchingCPTP.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCptpModalFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                    cptpModalFilter === 'all'
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Semua Mapel ({cptpList.length})
-                </button>
+            <div className="p-3.5 sm:p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+              <div className="text-sm sm:text-xs font-semibold text-slate-800">
+                Mapel:{' '}
+                <span className="text-blue-700">
+                  {selectedMapelObj ? `${selectedMapelObj.kode} · ${selectedMapelObj.nama}` : mapel || 'Belum dipilih'}
+                </span>{' '}
+                <span className="text-slate-500 font-normal">({matchingCPTP.length} Materi)</span>
               </div>
 
               <div className="relative flex-1 sm:max-w-xs">
@@ -1754,35 +1788,47 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                   value={cptpModalSearch}
                   onChange={(e) => setCptpModalSearch(e.target.value)}
                   placeholder="Cari materi atau tujuan..."
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full min-h-[44px] sm:min-h-0 pl-9 pr-3 py-2.5 sm:py-2 rounded-xl border border-slate-300 sm:border-slate-200 text-base sm:text-xs text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 overflow-y-auto divide-y divide-slate-100 flex-1">
-              {cptpList
-                .filter((item) => {
-                  if (cptpModalFilter === 'current') {
-                    if (
-                      selectedMapelObj &&
-                      item.mapel_kode.toUpperCase() !== selectedMapelObj.kode.toUpperCase()
-                    ) {
-                      return false;
-                    }
-                  }
-                  if (cptpModalSearch) {
-                    const q = cptpModalSearch.toLowerCase();
-                    return (
-                      (item.materi_pokok || '').toLowerCase().includes(q) ||
-                      item.elemen.toLowerCase().includes(q) ||
-                      item.cp.toLowerCase().includes(q) ||
-                      item.tp.toLowerCase().includes(q) ||
-                      item.mapel_kode.toLowerCase().includes(q)
-                    );
-                  }
-                  return true;
-                })
-                .map((item) => {
+            <div className="p-4 sm:p-5 overflow-y-auto divide-y divide-slate-200 sm:divide-slate-100 flex-1">
+              {(() => {
+                const filteredModalItems = matchingCPTP.filter((item) => {
+                  if (!cptpModalSearch.trim()) return true;
+                  const q = cptpModalSearch.toLowerCase();
+                  return (
+                    (item.materi_pokok || '').toLowerCase().includes(q) ||
+                    item.elemen.toLowerCase().includes(q) ||
+                    item.cp.toLowerCase().includes(q) ||
+                    item.tp.toLowerCase().includes(q)
+                  );
+                });
+
+                if (filteredModalItems.length === 0) {
+                  return (
+                    <div className="text-center py-10 px-4 space-y-3">
+                      <p className="text-slate-600 text-sm sm:text-xs">
+                        {matchingCPTP.length === 0
+                          ? `Belum ada data materi untuk mata pelajaran ${mapel || 'ini'} di Bank Kurikulum.`
+                          : 'Tidak ada materi yang sesuai dengan kata kunci pencarian.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManualMateriMode(true);
+                          setShowCPTPModal(false);
+                        }}
+                        className="inline-flex items-center justify-center min-h-[42px] sm:min-h-0 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        Ketik Materi Secara Manual
+                      </button>
+                    </div>
+                  );
+                }
+
+                return filteredModalItems.map((item) => {
                   const mapelObj = mapelList.find((m) => m.kode === item.mapel_kode);
                   const labelText = getCptpLabel(item);
                   const isCurrentSelected = materi === labelText;
@@ -1790,16 +1836,16 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                     <div
                       key={item.id}
                       className={`py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-start justify-between gap-3 ${
-                        isCurrentSelected ? 'bg-blue-50/40 -mx-2 px-2 rounded-xl' : ''
+                        isCurrentSelected ? 'bg-blue-50/50 -mx-2 px-2 rounded-xl' : ''
                       }`}
                     >
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                          <span className="font-semibold text-blue-700">
+                      <div className="space-y-1.5 sm:space-y-1 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] sm:text-xs text-slate-600 sm:text-slate-500 leading-snug">
+                          <span className="font-bold sm:font-semibold text-blue-700">
                             {mapelObj ? `${item.mapel_kode} · ${mapelObj.nama}` : item.mapel_kode}
                           </span>
                           <span aria-hidden="true">·</span>
-                          <span className="font-semibold text-slate-700">Fase {item.fase}</span>
+                          <span className="font-bold sm:font-semibold text-slate-800 sm:text-slate-700">Fase {item.fase}</span>
                           {item.elemen && (
                             <>
                               <span aria-hidden="true">·</span>
@@ -1807,11 +1853,11 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                             </>
                           )}
                         </div>
-                        <div className="text-sm font-bold text-slate-900">
+                        <div className="text-base sm:text-sm font-bold text-slate-950 leading-snug">
                           {labelText}
                         </div>
                         {item.tp && (
-                          <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                          <p className="text-sm sm:text-xs text-slate-700 sm:text-slate-600 line-clamp-3 sm:line-clamp-2 leading-relaxed">
                             {item.tp}
                           </p>
                         )}
@@ -1820,7 +1866,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       <button
                         type="button"
                         onClick={() => handleApplyCPTP(item)}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
+                        className={`min-h-[44px] sm:min-h-0 w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-sm sm:text-xs font-bold sm:font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
                           isCurrentSelected
                             ? 'bg-emerald-600 text-white'
                             : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -1828,7 +1874,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       >
                         {isCurrentSelected ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                             <span>Terpilih</span>
                           </>
                         ) : (
@@ -1837,20 +1883,15 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                       </button>
                     </div>
                   );
-                })}
-
-              {cptpList.length === 0 && (
-                <div className="text-center py-12 text-slate-400 text-xs">
-                  Belum ada data materi di Bank Kurikulum.
-                </div>
-              )}
+                });
+              })()}
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowCPTPModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer"
+                className="min-h-[44px] sm:min-h-0 w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-300 sm:border-slate-200 bg-white hover:bg-slate-100 text-slate-800 sm:text-slate-700 text-sm sm:text-xs font-semibold cursor-pointer"
               >
                 Tutup
               </button>

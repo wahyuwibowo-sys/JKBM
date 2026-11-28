@@ -1,5 +1,6 @@
 import { User, Guru, KelasItem, MapelItem, KurikulumCPTP, JadwalMengajar, JurnalPembelajaran, AppConfig } from '../types';
 import { DEFAULT_LOGO_SIDAYU, DEFAULT_LOGO_JATIM, DEFAULT_QR_TTD } from './defaultLogos';
+import { BSKAP_2025_CP_TP } from './bskapCptp2025';
 
 export const INITIAL_CONFIG: AppConfig = {
   sekolah: 'SMKN 1 Sidayu Gresik',
@@ -199,88 +200,9 @@ export const INITIAL_KELAS: KelasItem[] = [
   { id: 'XII-TITL-2', tingkat: 'XII', jurusan: 'TITL', nama: 'XII TITL 2', jumlah_siswa: 32 },
 ];
 
-// CAPAIAN PEMBELAJARAN (CP & TP)
+// CAPAIAN PEMBELAJARAN (CP & TP) — Sesuai Lampiran Keputusan Kepala BSKAP No. 046/H/KR/2025
 export const INITIAL_CP_TP: KurikulumCPTP[] = [
-  {
-    id: 'CPTP-01',
-    mapel_kode: 'MPKK',
-    fase: 'F',
-    elemen: 'Perencanaan dan Pengalamatan Jaringan Komputer',
-    materi_pokok: 'Konfigurasi VLAN & Inter-VLAN Routing pada Switch Manageable',
-    cp: 'Peserta didik mampu merencanakan topologi dan arsitektur jaringan, pengalamatan VLSM/CIDR, konfigurasi VLAN manageable, routing dinamis, dan troubleshooting koneksi secara presisi.',
-    tp: '1. Peserta didik mampu mengkonfigurasi VLAN dan Trunking pada switch manageable.\n2. Peserta didik mampu menganalisis traffic jaringan lokal dan troubleshooting koneksi antar VLAN.',
-    atp: 'Tahap 1: Konsep VLAN (802.1Q) -> Tahap 2: Simulasi topologi Cisco Packet Tracer -> Tahap 3: Praktik hardware switch manageable -> Tahap 4: Pengujian throughput koneksi.',
-  },
-  {
-    id: 'CPTP-02',
-    mapel_kode: 'KKA',
-    fase: 'F',
-    elemen: 'Pemrograman Koding dan Aplikasi AI Terapan',
-    materi_pokok: 'Implementasi Machine Learning Computer Vision dengan Python',
-    cp: 'Peserta didik mampu membangun solusi aplikasi komputasi awan, menerapkan algoritma kecerdasan artifisial, computer vision sederhana, dan integrasi API.',
-    tp: '1. Membangun model klasifikasi citra sederhana berbasis transfer learning.\n2. Mengintegrasikan model kecerdasan artifisial ke dalam aplikasi web/mobile.',
-    atp: 'Tahap 1: Pengenalan Python & library ML -> Tahap 2: Pelatihan dataset -> Tahap 3: Deployment aplikasi.',
-  },
-  {
-    id: 'CPTP-03',
-    mapel_kode: 'INF',
-    fase: 'E',
-    elemen: 'Berpikir Komputasional & Teknologi Informasi',
-    materi_pokok: 'K3LH & Pengenalan Media Transmisi Fiber Optik',
-    cp: 'Peserta didik mampu menerapkan berpikir komputasional dalam menyelesaikan persoalan kehidupan sehari-hari dan memanfaatkan sistem komputasi terhubung.',
-    tp: '1. Menelaah pola dekomposisi dan abstraksi algoritma.\n2. Mengoperasikan aplikasi pengolah data dan otomasi perkantoran secara kolaboratif.',
-    atp: 'Tahap 1: Teori Berpikir Komputasional -> Tahap 2: Praktik spreadsheet & cloud workspace -> Tahap 3: Presentasi proyek.',
-  },
-  {
-    id: 'CPTP-04',
-    mapel_kode: 'DPK',
-    fase: 'E',
-    elemen: 'Dasar-dasar Kejuruan dan Keselamatan Kerja (K3LH)',
-    materi_pokok: 'SOP Keselamatan Kerja & Penanganan Alat Perkakas Bengkel',
-    cp: 'Peserta didik mampu menerapkan SOP keselamatan kerja K3LH, penanganan peralatan teknik, dan pemahaman budaya kerja industri.',
-    tp: '1. Menerapkan 5R dan APD standar bengkel/laboratorium.\n2. Melakukan inventarisasi dan perawatan berkala alat perkakas teknik.',
-    atp: 'Tahap 1: K3LH & APD -> Tahap 2: Penggunaan perkakas -> Tahap 3: Pembuatan laporan keselamatan.',
-  },
-  {
-    id: 'CPTP-05',
-    mapel_kode: 'PABP',
-    fase: 'E/F',
-    elemen: 'Akhlak Mulia dan Keberagamaan',
-    materi_pokok: 'Etika Profesi, Integritas Kerja, dan Toleransi Bermasyarakat',
-    cp: 'Peserta didik mampu menganalisis nilai-nilai ketakwaan, akhlak kepada sesama, etika profesi, serta toleransi dalam kehidupan bermasyarakat.',
-    tp: '1. Meneladani nilai kejujuran dan integritas dalam dunia kerja.\n2. Mempraktikkan toleransi dan kerukunan beragama.',
-    atp: 'Tahap 1: Kajian teks suci -> Tahap 2: Studi kasus integritas profesi -> Tahap 3: Aksi sosial.',
-  },
-  {
-    id: 'CPTP-06',
-    mapel_kode: 'MAT',
-    fase: 'E',
-    elemen: 'Aljabar dan Fungsi',
-    materi_pokok: 'Penerapan Sistem Persamaan Linear pada Masalah Kontekstual Vokasi',
-    cp: 'Peserta didik mampu menyelesaikan masalah yang berkaitan dengan sistem persamaan linear tiga variabel dan sistem pertidaksamaan linear dua variabel.',
-    tp: '1. Memodelkan permasalahan industri ke dalam bentuk SPLTV.\n2. Menentukan solusi optimal menggunakan metode eliminasi-substitusi.',
-    atp: 'Tahap 1: Pemodelan masalah nyata -> Tahap 2: Perhitungan matematis -> Tahap 3: Interpretasi hasil.',
-  },
-  {
-    id: 'CPTP-07',
-    mapel_kode: 'BIN',
-    fase: 'E',
-    elemen: 'Menulis Teks Laporan Hasil Observasi',
-    materi_pokok: 'Penyusunan Teks Laporan Hasil Observasi (LHO) Peralatan Praktik',
-    cp: 'Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif.',
-    tp: '1. Mengidentifikasi struktur teks laporan hasil observasi objektif.\n2. Menyusun laporan hasil pengamatan mesin atau peralatan bengkel.',
-    atp: 'Tahap 1: Observasi lapangan -> Tahap 2: Kerangka teks -> Tahap 3: Penyuntingan dan publikasi.',
-  },
-  {
-    id: 'CPTP-08',
-    mapel_kode: 'BIG',
-    fase: 'F',
-    elemen: 'Technical Communication & Workplace English',
-    materi_pokok: 'Reading Technical Manuals and Explaining Operating Procedures',
-    cp: 'Peserta didik mampu memahami dan menyusun teks fungsional lisan dan tulis terkait prosedur operasional peralatan teknis industri.',
-    tp: '1. Mengidentifikasi instruksi manual dan SOP dalam bahasa Inggris teknik.\n2. Mendemonstrasikan langkah kerja mesin dalam bahasa Inggris sederhana.',
-    atp: 'Tahap 1: Vocabulary drill teknik -> Tahap 2: Reading manual -> Tahap 3: Simulation presentation.',
-  },
+  ...BSKAP_2025_CP_TP,
 ];
 
 // JADWAL MENGAJAR OTOMATIS
@@ -364,10 +286,18 @@ export const INITIAL_JADWAL: JadwalMengajar[] = [
     kelas: 'X TKJ 1',
     mapel_kode: 'INF',
     mapel_nama: 'Informatika',
-    materi_pokok: 'K3LH & Pengenalan Media Transmisi Fiber Optik',
-    cp: 'Peserta didik mampu memahami K3LH dalam pekerjaan jaringan telekomunikasi dan pengenalan serat optik.',
-    tp: 'Mengenal bagian kabel fiber optik serta prosedur keselamatan penanganan pecahan kaca fiber.',
-    atp: 'Tahap 1: Keselamatan kerja FO -> Tahap 2: Observasi fisik kabel dropcore -> Tahap 3: Splicing demo.',
+    materi_pokok:
+      BSKAP_2025_CP_TP.find((c) => c.id === 'CPTP-BSKAP-INF-E-01')?.materi_pokok ||
+      'Struktur data dasar, algoritma standar, komputasi data berkualitas, dan penulisan pseudocode',
+    cp:
+      BSKAP_2025_CP_TP.find((c) => c.id === 'CPTP-BSKAP-INF-E-01')?.cp ||
+      'Memahami struktur data dan algoritma standar; komputasi untuk data berkualitas; menuliskan solusi rancangan program dalam pseudocode; menyimulasikan model Input-Process-Output komputer Von Neumann serta peran sistem operasi.',
+    tp:
+      BSKAP_2025_CP_TP.find((c) => c.id === 'CPTP-BSKAP-INF-E-01')?.tp ||
+      'Menerapkan struktur data dan algoritma standar dalam rancangan pseudocode untuk menghasilkan data berkualitas.',
+    atp:
+      BSKAP_2025_CP_TP.find((c) => c.id === 'CPTP-BSKAP-INF-E-01')?.atp ||
+      'Tahap 1 (Konsep): Mengenal struktur data dasar dan algoritma standar --> Tahap 2 (Pendalaman): Menyusun rancangan pseudocode --> Tahap 3 (Penerapan): Menghasilkan data berkualitas.',
   },
 ];
 

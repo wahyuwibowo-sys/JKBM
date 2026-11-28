@@ -21,6 +21,7 @@ import {
   DocumentData,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { INITIAL_CP_TP } from '../data/initialDatabase';
 import { AppConfig, DeepLearningData, JurnalPembelajaran, KurikulumCPTP, User, UserRole } from '../types';
 import { auth } from './googleAuthService';
 
@@ -137,7 +138,8 @@ export function addDeletedSeedIds(ids: string[]): string[] {
 const DELETED_CPTP_SEEDS_KEY = 'ejurnal_deleted_seed_cptp_v1';
 const PENDING_CPTP_QUEUE_KEY = 'ejurnal_pending_cptp_sync_v1';
 const KNOWN_CLOUD_CPTP_KEY = 'ejurnal_known_cloud_cptp_v1';
-export const SEED_CPTP_IDS = new Set([
+export const SEED_CPTP_IDS = new Set(INITIAL_CP_TP.map((item) => item.id));
+export const LEGACY_NON_LAMPIRAN_CPTP_IDS = new Set([
   'CPTP-01',
   'CPTP-02',
   'CPTP-03',
@@ -147,6 +149,35 @@ export const SEED_CPTP_IDS = new Set([
   'CPTP-07',
   'CPTP-08',
 ]);
+
+export function isLegacyNonLampiranCptp(
+  item?: Partial<KurikulumCPTP> | null,
+  docId?: string
+): boolean {
+  const id = (docId || item?.id || '').trim();
+  if (id && (LEGACY_NON_LAMPIRAN_CPTP_IDS.has(id) || /^CPTP-0?\d{1,2}$/i.test(id))) {
+    return true;
+  }
+  if (!item) return false;
+  const mapelKode = (item.mapel_kode || '').trim().toUpperCase();
+  const materi = (item.materi_pokok || '').toLowerCase();
+  const elemen = (item.elemen || '').toLowerCase();
+  const cp = (item.cp || '').toLowerCase();
+  const tp = (item.tp || '').toLowerCase();
+
+  // Bersihkan sisa CP/TP awal mapel Informatika (non-lampiran BSKAP 046/2025)
+  if (
+    mapelKode === 'INF' &&
+    (materi.includes('fiber optik') ||
+      materi.includes('k3lh') ||
+      elemen === 'berpikir komputasional & teknologi informasi' ||
+      cp.includes('pekerjaan jaringan telekomunikasi dan pengenalan serat optik') ||
+      tp.includes('pecahan kaca fiber'))
+  ) {
+    return true;
+  }
+  return false;
+}
 
 export function getDeletedSeedCptpIds(): string[] {
   try {
@@ -165,7 +196,7 @@ export function addDeletedSeedCptpIds(ids: string[]): string[] {
       existing.add(id);
     }
   });
-  const next = Array.from(existing).slice(0, 50);
+  const next = Array.from(existing).slice(0, 300);
   try {
     localStorage.setItem(DELETED_CPTP_SEEDS_KEY, JSON.stringify(next));
   } catch {}
@@ -699,7 +730,7 @@ export async function syncConfigToFirebase(config: AppConfig): Promise<boolean> 
   if (Array.isArray(config.deleted_cptp_ids)) {
     payload.deleted_cptp_ids = config.deleted_cptp_ids
       .filter((id): id is string => typeof id === 'string' && id.length > 0)
-      .slice(0, 50)
+      .slice(0, 300)
       .map((id) => clampString(id, 128));
   }
 
@@ -1145,7 +1176,7 @@ export function subscribeToFirestoreCPTP(
   onUpdate: (mergedList: KurikulumCPTP[]) => void
 ): () => void {
   const path = 'cptp';
-  const queryLimit = 300;
+  const queryLimit = 500;
   let unpushedBackfillTriggered = false;
 
   try {
@@ -1157,11 +1188,15 @@ export function subscribeToFirestoreCPTP(
     return onSnapshot(
       q,
       (snapshot) => {
-        const cloudItems: (KurikulumCPTP & { _updatedAt?: string })[] = [];
+        const cloudItems: Array<KurikulumCPTP & { _updatedAt?: string; _docId?: string }> = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as KurikulumCPTP & { _updatedAt?: string };
-          if (data && data.id) {
-            cloudItems.push(data);
+          if (data && (data.id || docSnap.id)) {
+            cloudItems.push({
+              ...data,
+              id: data.id || docSnap.id,
+              _docId: docSnap.id,
+            });
           }
         });
 
@@ -1187,9 +1222,11 @@ export function subscribeToFirestoreCPTP(
         const localItems = getLocalList();
         const mergedMap = new Map<string, KurikulumCPTP>();
         const unpushedLocalCustomItems: KurikulumCPTP[] = [];
+        const legacyIdsToPurge = new Set<string>();
 
         for (const li of localItems) {
           if (!li?.id) continue;
+          if (isLegacyNonLampiranCptp(li)) continue;
           if (removedIds.has(li.id)) continue;
           if (SEED_CPTP_IDS.has(li.id) && deletedSeeds.has(li.id)) continue;
 
@@ -1211,17 +1248,28 @@ export function subscribeToFirestoreCPTP(
 
         for (const ci of cloudItems) {
           if (!ci?.id || removedIds.has(ci.id)) continue;
+          if (isLegacyNonLampiranCptp(ci, ci._docId)) {
+            legacyIdsToPurge.add(ci._docId || ci.id);
+            if (ci.id) legacyIdsToPurge.add(ci.id);
+            continue;
+          }
           if (ci.id in pendingQueue) {
             // Keep newer local pending edit until flushed
             continue;
           }
-          const { _updatedAt: _ignored, ...cleanItem } = ci;
+          const { _updatedAt: _ignored, _docId: _ignoredDocId, ...cleanItem } = ci;
           mergedMap.set(ci.id, cleanItem);
         }
 
         const merged = Array.from(mergedMap.values());
         saveLocalList(merged);
         onUpdate(merged);
+
+        if (!snapshot.metadata.fromCache && legacyIdsToPurge.size > 0) {
+          legacyIdsToPurge.forEach((legacyId) => {
+            deleteCPTPFromFirebase(legacyId).catch(() => {});
+          });
+        }
 
         // Automatically backfill custom local CPTP items that Admin saved before cloud sync was enabled
         if (

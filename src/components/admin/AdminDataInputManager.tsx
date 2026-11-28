@@ -1339,11 +1339,11 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
             <form onSubmit={handleSaveCPTP} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Mata Pelajaran *</label>
+                  <label className="block text-sm sm:text-xs font-bold text-slate-700 mb-1">Mata Pelajaran *</label>
                   <select
                     value={cptpForm.mapel_kode}
                     onChange={(e) => setCptpForm({ ...cptpForm, mapel_kode: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold"
+                    className="w-full min-h-[44px] sm:min-h-0 px-3 py-2.5 sm:py-2 rounded-xl border border-slate-300 sm:border-slate-200 text-base sm:text-xs font-semibold text-slate-900 bg-white"
                   >
                     {mapelList.map((m) => (
                       <option key={m.kode} value={m.kode}>
@@ -1354,11 +1354,11 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Fase Kurikulum</label>
+                  <label className="block text-sm sm:text-xs font-bold text-slate-700 mb-1">Fase Kurikulum</label>
                   <select
                     value={cptpForm.fase}
                     onChange={(e) => setCptpForm({ ...cptpForm, fase: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold"
+                    className="w-full min-h-[44px] sm:min-h-0 px-3 py-2.5 sm:py-2 rounded-xl border border-slate-300 sm:border-slate-200 text-base sm:text-xs font-semibold text-slate-900 bg-white"
                   >
                     <option value="E">Fase E (Kelas X)</option>
                     <option value="F">Fase F (Kelas XI &amp; XII)</option>
@@ -1367,19 +1367,19 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Elemen Kurikulum</label>
+                  <label className="block text-sm sm:text-xs font-bold text-slate-700 mb-1">Elemen Kurikulum</label>
                   <input
                     type="text"
                     value={cptpForm.elemen}
                     onChange={(e) => updateCptpField({ elemen: e.target.value })}
                     placeholder="Contoh: Perencanaan & Pengalamatan Jaringan"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold"
+                    className="w-full min-h-[44px] sm:min-h-0 px-3 py-2.5 sm:py-2 rounded-xl border border-slate-300 sm:border-slate-200 text-base sm:text-xs font-semibold text-slate-900 bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-sm sm:text-xs font-bold text-slate-700 mb-1">
                   Materi Pokok Pembelajaran (Akan Muncul Otomatis untuk Guru) *
                 </label>
                 <input
@@ -1388,13 +1388,13 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                   onChange={(e) => updateCptpField({ materi_pokok: e.target.value })}
                   placeholder="Contoh: Konfigurasi VLAN & Inter-VLAN Routing pada Switch Manageable"
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-blue-900"
+                  className="w-full min-h-[44px] sm:min-h-0 px-3 py-2.5 sm:py-2 rounded-xl border border-slate-300 sm:border-slate-200 text-base sm:text-xs font-bold text-blue-950 bg-white"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-sm sm:text-xs font-bold text-slate-700 mb-1">
                     Capaian Pembelajaran (CP) *
                   </label>
                   <textarea
@@ -1403,12 +1403,12 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                     onChange={(e) => updateCptpField({ cp: e.target.value })}
                     placeholder="Contoh: Peserta didik mampu merencanakan topologi dan arsitektur jaringan..."
                     required
-                    className="w-full p-3 rounded-xl border border-slate-200 text-xs leading-relaxed"
+                    className="w-full p-3 rounded-xl border border-slate-300 sm:border-slate-200 text-sm sm:text-xs text-slate-900 leading-relaxed bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-sm sm:text-xs font-bold text-slate-700 mb-1">
                     Tujuan Pembelajaran (TP) *
                   </label>
                   <textarea
@@ -1417,7 +1417,7 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                     onChange={(e) => updateCptpField({ tp: e.target.value })}
                     placeholder="Contoh: 1. Mengkonfigurasi VLAN dan Trunking. 2. Troubleshooting koneksi..."
                     required
-                    className="w-full p-3 rounded-xl border border-slate-200 text-xs leading-relaxed"
+                    className="w-full p-3 rounded-xl border border-slate-300 sm:border-slate-200 text-sm sm:text-xs text-slate-900 leading-relaxed bg-white"
                   />
                 </div>
               </div>
@@ -1514,22 +1514,22 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
           </div>
 
           {/* List of CP/TP and Materi */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h4 className="text-sm font-extrabold text-slate-900">
+                <h4 className="text-base sm:text-sm font-extrabold text-slate-900">
                   Daftar Bank CP, TP &amp; Materi Pembelajaran ({cptpList.length} Item Tersedia)
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm sm:text-xs text-slate-600 sm:text-slate-500">
                   Semua materi di bawah ini siap dipilih instan oleh Guru tanpa mengetik ulang.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <select
                   value={cptpFilterMapel}
                   onChange={(e) => setCptpFilterMapel(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50"
+                  className="min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-xl border border-slate-300 sm:border-slate-200 text-base sm:text-xs font-bold bg-slate-50 text-slate-900"
                 >
                   <option value="all">Semua Mata Pelajaran</option>
                   {mapelList.map((m) => (
@@ -1545,9 +1545,9 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                     value={cptpSearch}
                     onChange={(e) => setCptpSearch(e.target.value)}
                     placeholder="Cari materi / CP..."
-                    className="pl-7 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs w-36 sm:w-48"
+                    className="min-h-[44px] sm:min-h-0 pl-8 sm:pl-7 pr-3 py-2 sm:py-1.5 rounded-xl border border-slate-300 sm:border-slate-200 text-base sm:text-xs w-full sm:w-48 bg-white text-slate-900"
                   />
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2.5" />
+                  <Search className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-400 absolute left-2.5 sm:left-2 top-3 sm:top-2.5" />
                 </div>
               </div>
             </div>
@@ -1577,73 +1577,73 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800 text-[11px] font-bold">
+                          <span className="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800 text-xs sm:text-[11px] font-bold">
                             {mapelObj ? `${item.mapel_kode} - ${mapelObj.nama}` : item.mapel_kode}
                           </span>
-                          <span className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 text-xs sm:text-[10px] font-bold">
                             Fase {item.fase}
                           </span>
                           {item.elemen && (
-                            <span className="text-xs font-semibold text-slate-600">
+                            <span className="text-[13px] sm:text-xs font-semibold text-slate-700 sm:text-slate-600 leading-snug">
                               • Elemen: {item.elemen}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleEditCPTP(item)}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
+                            className="p-2 sm:p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
                             title="Edit CP/TP & Materi"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            <Edit2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteCPTP(item.id)}
-                            className="p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 cursor-pointer"
+                            className="p-2 sm:p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 cursor-pointer"
                             title="Hapus"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                           </button>
                         </div>
                       </div>
 
                       {item.materi_pokok && (
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                          <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-slate-400 block">
                             Materi Pokok:
                           </span>
-                          <p className="text-xs font-extrabold text-blue-950">
+                          <p className="text-[15px] sm:text-xs font-extrabold text-blue-950 leading-snug">
                             {item.materi_pokok}
                           </p>
                         </div>
                       )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-0.5">
+                        <div className="p-3 sm:p-2.5 rounded-xl bg-white border border-slate-200">
+                          <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-0.5">
                             Capaian Pembelajaran (CP):
                           </span>
-                          <p className="text-[11px] text-slate-700 leading-relaxed line-clamp-3">
+                          <p className="text-[13px] sm:text-[11px] text-slate-800 sm:text-slate-700 leading-relaxed line-clamp-3">
                             {item.cp}
                           </p>
                         </div>
 
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 block mb-0.5">
+                        <div className="p-3 sm:p-2.5 rounded-xl bg-white border border-slate-200">
+                          <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-700 block mb-0.5">
                             Tujuan Pembelajaran (TP):
                           </span>
-                          <p className="text-[11px] text-slate-700 leading-relaxed line-clamp-3 whitespace-pre-line">
+                          <p className="text-[13px] sm:text-[11px] text-slate-800 sm:text-slate-700 leading-relaxed line-clamp-3 whitespace-pre-line">
                             {item.tp}
                           </p>
                         </div>
                       </div>
 
                       {item.atp && (
-                        <div className="text-[11px] text-slate-500 font-mono">
-                          <strong className="text-slate-700">ATP:</strong> {item.atp}
+                        <div className="text-[13px] sm:text-[11px] text-slate-600 sm:text-slate-500 font-mono leading-relaxed">
+                          <strong className="text-slate-800 sm:text-slate-700">ATP:</strong> {item.atp}
                         </div>
                       )}
                     </div>

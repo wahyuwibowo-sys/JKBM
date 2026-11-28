@@ -35,6 +35,7 @@ import {
   SEED_JURNAL_IDS,
   getDeletedSeedCptpIds,
   SEED_CPTP_IDS,
+  isLegacyNonLampiranCptp,
 } from './firebaseService';
 import { GasService } from './gasService';
 import { formatNip, normalizeNip } from '../utils/nipFormatter';
@@ -497,7 +498,12 @@ export class StorageService {
         const parsedRaw: KurikulumCPTP[] = JSON.parse(data);
         let modified = false;
         const parsed = parsedRaw.filter((item) => {
-          if (item?.id && SEED_CPTP_IDS.has(item.id) && deletedSeeds.has(item.id)) {
+          if (!item?.id) return false;
+          if (isLegacyNonLampiranCptp(item)) {
+            modified = true;
+            return false;
+          }
+          if (SEED_CPTP_IDS.has(item.id) && deletedSeeds.has(item.id)) {
             modified = true;
             return false;
           }
@@ -531,7 +537,28 @@ export class StorageService {
   static getJadwalList(): JadwalMengajar[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.JADWAL);
-      return data ? JSON.parse(data) : INITIAL_JADWAL;
+      if (!data) return INITIAL_JADWAL;
+      const parsed: JadwalMengajar[] = JSON.parse(data);
+      const updatedInfSeed = INITIAL_JADWAL.find((j) => j.id === 'JDW-06');
+      let modified = false;
+      const migrated = parsed.map((j) => {
+        if (
+          j.id === 'JDW-06' &&
+          j.mapel_kode === 'INF' &&
+          updatedInfSeed &&
+          ((j.materi_pokok || '').toLowerCase().includes('fiber optik') ||
+            (j.materi_pokok || '').toLowerCase().includes('k3lh') ||
+            (j.cp || '').toLowerCase().includes('serat optik'))
+        ) {
+          modified = true;
+          return updatedInfSeed;
+        }
+        return j;
+      });
+      if (modified) {
+        localStorage.setItem(STORAGE_KEYS.JADWAL, JSON.stringify(migrated));
+      }
+      return migrated;
     } catch {
       return INITIAL_JADWAL;
     }
