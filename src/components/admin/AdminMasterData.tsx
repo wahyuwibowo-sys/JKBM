@@ -10,6 +10,7 @@ import {
 } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { formatNip } from '../../utils/nipFormatter';
+import { groupCptpByMapelAndElemen } from '../../utils/cptpGrouping';
 import {
   Shield,
   Users,
@@ -783,34 +784,66 @@ export const AdminMasterData: React.FC<AdminMasterDataProps> = ({
       {/* SUBTAB 6: BANK CAPAIAN PEMBELAJARAN (CP, TP, ATP)                         */}
       {/* ========================================================================= */}
       {subTab === 'cptp' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-5">
           <h3 className="text-base font-extrabold text-slate-900">
             Bank Capaian Pembelajaran (CP), TP, dan ATP Kurikulum Merdeka
           </h3>
-          <div className="space-y-4">
-            {cptpList.map((item) => (
-              <div
-                key={item.id}
-                className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs"
-              >
-                <div className="flex items-center justify-between font-bold text-blue-900">
-                  <span>
-                    {item.elemen} (Mapel: {item.mapel_kode})
+          <div className="space-y-5">
+            {groupCptpByMapelAndElemen(cptpList, mapelList).map((mapelGroup) => (
+              <div key={mapelGroup.mapel_kode} className="space-y-3">
+                <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-slate-900 text-white">
+                  <span className="text-xs font-extrabold">
+                    {mapelGroup.mapel_kode} - {mapelGroup.mapel_nama}
                   </span>
-                  <span className="font-mono text-slate-400">{item.id}</span>
+                  <span className="text-[11px] font-semibold text-slate-300 tabular-nums">
+                    {mapelGroup.totalItems} Item
+                  </span>
                 </div>
-                <div>
-                  <strong className="text-slate-900">Capaian Pembelajaran (CP):</strong>
-                  <p className="text-slate-700 mt-0.5 leading-relaxed">{item.cp}</p>
-                </div>
-                <div>
-                  <strong className="text-slate-900">Tujuan Pembelajaran (TP):</strong>
-                  <p className="text-slate-700 mt-0.5 leading-relaxed whitespace-pre-line">{item.tp}</p>
-                </div>
-                <div>
-                  <strong className="text-slate-900">Alur Tujuan Pembelajaran (ATP):</strong>
-                  <p className="text-slate-700 mt-0.5 leading-relaxed">{item.atp}</p>
-                </div>
+
+                {mapelGroup.elemenGroups.map((elemenGroup) => (
+                  <div key={`${mapelGroup.mapel_kode}-${elemenGroup.elemen}`} className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-blue-50/90 border border-blue-200/80">
+                      <span className="text-xs font-extrabold text-blue-950">
+                        Elemen: {elemenGroup.elemen}
+                      </span>
+                      <span className="text-[11px] font-bold text-blue-700 tabular-nums">
+                        {elemenGroup.items.length} Materi
+                      </span>
+                    </div>
+
+                    {elemenGroup.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between font-bold text-blue-900 gap-2 flex-wrap">
+                          <span>
+                            {elemenGroup.elemen} (Mapel: {item.mapel_kode} · Fase {item.fase})
+                          </span>
+                          <span className="font-mono text-slate-400">{item.id}</span>
+                        </div>
+                        {item.materi_pokok && (
+                          <div>
+                            <strong className="text-slate-900">Materi Pokok:</strong>
+                            <p className="text-blue-950 font-bold mt-0.5">{item.materi_pokok}</p>
+                          </div>
+                        )}
+                        <div>
+                          <strong className="text-slate-900">Capaian Pembelajaran (CP):</strong>
+                          <p className="text-slate-700 mt-0.5 leading-relaxed">{item.cp}</p>
+                        </div>
+                        <div>
+                          <strong className="text-slate-900">Tujuan Pembelajaran (TP):</strong>
+                          <p className="text-slate-700 mt-0.5 leading-relaxed whitespace-pre-line">{item.tp}</p>
+                        </div>
+                        <div>
+                          <strong className="text-slate-900">Alur Tujuan Pembelajaran (ATP):</strong>
+                          <p className="text-slate-700 mt-0.5 leading-relaxed">{item.atp}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             ))}
           </div>

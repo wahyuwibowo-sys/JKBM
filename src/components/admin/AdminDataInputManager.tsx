@@ -19,6 +19,7 @@ import {
 } from '../../services/firebaseService';
 import { formatNip } from '../../utils/nipFormatter';
 import { analyzeTPForATP, generateATPFromTP } from '../../utils/narrativeGenerator';
+import { groupCptpByMapelAndElemen, resolveCanonicalElemen } from '../../utils/cptpGrouping';
 import {
   PlusCircle,
   Edit2,
@@ -1552,14 +1553,15 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
               </div>
             </div>
 
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-              {cptpList
-                .filter((item) => {
+            <div className="space-y-5 max-h-[560px] overflow-y-auto pr-1">
+              {(() => {
+                const filteredCptp = cptpList.filter((item) => {
                   if (cptpFilterMapel !== 'all' && item.mapel_kode !== cptpFilterMapel) return false;
                   if (cptpSearch) {
                     const q = cptpSearch.toLowerCase();
                     return (
                       (item.materi_pokok || '').toLowerCase().includes(q) ||
+                      resolveCanonicalElemen(item).toLowerCase().includes(q) ||
                       item.elemen.toLowerCase().includes(q) ||
                       item.cp.toLowerCase().includes(q) ||
                       item.tp.toLowerCase().includes(q) ||
@@ -1567,88 +1569,126 @@ export const AdminDataInputManager: React.FC<AdminDataInputManagerProps> = ({
                     );
                   }
                   return true;
-                })
-                .map((item) => {
-                  const mapelObj = mapelList.find((m) => m.kode === item.mapel_kode);
+                });
+
+                if (filteredCptp.length === 0) {
                   return (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-all space-y-2.5"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800 text-xs sm:text-[11px] font-bold">
-                            {mapelObj ? `${item.mapel_kode} - ${mapelObj.nama}` : item.mapel_kode}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 text-xs sm:text-[10px] font-bold">
-                            Fase {item.fase}
-                          </span>
-                          {item.elemen && (
-                            <span className="text-[13px] sm:text-xs font-semibold text-slate-700 sm:text-slate-600 leading-snug">
-                              • Elemen: {item.elemen}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleEditCPTP(item)}
-                            className="p-2 sm:p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
-                            title="Edit CP/TP & Materi"
-                          >
-                            <Edit2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCPTP(item.id)}
-                            className="p-2 sm:p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 cursor-pointer"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {item.materi_pokok && (
-                        <div>
-                          <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-slate-400 block">
-                            Materi Pokok:
-                          </span>
-                          <p className="text-[15px] sm:text-xs font-extrabold text-blue-950 leading-snug">
-                            {item.materi_pokok}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                        <div className="p-3 sm:p-2.5 rounded-xl bg-white border border-slate-200">
-                          <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-0.5">
-                            Capaian Pembelajaran (CP):
-                          </span>
-                          <p className="text-[13px] sm:text-[11px] text-slate-800 sm:text-slate-700 leading-relaxed line-clamp-3">
-                            {item.cp}
-                          </p>
-                        </div>
-
-                        <div className="p-3 sm:p-2.5 rounded-xl bg-white border border-slate-200">
-                          <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-700 block mb-0.5">
-                            Tujuan Pembelajaran (TP):
-                          </span>
-                          <p className="text-[13px] sm:text-[11px] text-slate-800 sm:text-slate-700 leading-relaxed line-clamp-3 whitespace-pre-line">
-                            {item.tp}
-                          </p>
-                        </div>
-                      </div>
-
-                      {item.atp && (
-                        <div className="text-[13px] sm:text-[11px] text-slate-600 sm:text-slate-500 font-mono leading-relaxed">
-                          <strong className="text-slate-800 sm:text-slate-700">ATP:</strong> {item.atp}
-                        </div>
-                      )}
+                    <div className="text-center py-8 text-sm sm:text-xs text-slate-500">
+                      Tidak ada data CP/TP yang sesuai dengan filter atau pencarian.
                     </div>
                   );
-                })}
+                }
+
+                const groupedByMapel = groupCptpByMapelAndElemen(filteredCptp, mapelList);
+
+                return groupedByMapel.map((mapelGroup) => (
+                  <div key={mapelGroup.mapel_kode} className="space-y-3">
+                    {cptpFilterMapel === 'all' && (
+                      <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-slate-900 text-white">
+                        <span className="text-xs font-extrabold">
+                          {mapelGroup.mapel_kode} - {mapelGroup.mapel_nama}
+                        </span>
+                        <span className="text-[11px] font-semibold text-slate-300 tabular-nums">
+                          {mapelGroup.totalItems} Item
+                        </span>
+                      </div>
+                    )}
+
+                    {mapelGroup.elemenGroups.map((elemenGroup) => (
+                      <div key={`${mapelGroup.mapel_kode}-${elemenGroup.elemen}`} className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-blue-50/90 border border-blue-200/80">
+                          <span className="text-xs font-extrabold text-blue-950">
+                            Elemen: {elemenGroup.elemen}
+                          </span>
+                          <span className="text-[11px] font-bold text-blue-700 tabular-nums shrink-0">
+                            {elemenGroup.items.length} Materi
+                          </span>
+                        </div>
+
+                        {elemenGroup.items.map((item) => {
+                          const mapelObj = mapelList.find((m) => m.kode === item.mapel_kode);
+                          return (
+                            <div
+                              key={item.id}
+                              className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-all space-y-2.5"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800 text-xs sm:text-[11px] font-bold">
+                                    {mapelObj ? `${item.mapel_kode} - ${mapelObj.nama}` : item.mapel_kode}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 text-xs sm:text-[10px] font-bold">
+                                    Fase {item.fase}
+                                  </span>
+                                  <span className="text-[13px] sm:text-xs font-semibold text-slate-700 sm:text-slate-600 leading-snug">
+                                    • Elemen: {elemenGroup.elemen}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditCPTP(item)}
+                                    className="p-2 sm:p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
+                                    title="Edit CP/TP & Materi"
+                                  >
+                                    <Edit2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCPTP(item.id)}
+                                    className="p-2 sm:p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 cursor-pointer"
+                                    title="Hapus"
+                                  >
+                                    <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {item.materi_pokok && (
+                                <div>
+                                  <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-slate-400 block">
+                                    Materi Pokok:
+                                  </span>
+                                  <p className="text-[15px] sm:text-xs font-extrabold text-blue-950 leading-snug">
+                                    {item.materi_pokok}
+                                  </p>
+                                </div>
+                              )}
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                <div className="p-3 sm:p-2.5 rounded-xl bg-white border border-slate-200">
+                                  <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-0.5">
+                                    Capaian Pembelajaran (CP):
+                                  </span>
+                                  <p className="text-[13px] sm:text-[11px] text-slate-800 sm:text-slate-700 leading-relaxed line-clamp-3">
+                                    {item.cp}
+                                  </p>
+                                </div>
+
+                                <div className="p-3 sm:p-2.5 rounded-xl bg-white border border-slate-200">
+                                  <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-700 block mb-0.5">
+                                    Tujuan Pembelajaran (TP):
+                                  </span>
+                                  <p className="text-[13px] sm:text-[11px] text-slate-800 sm:text-slate-700 leading-relaxed line-clamp-3 whitespace-pre-line">
+                                    {item.tp}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {item.atp && (
+                                <div className="text-[13px] sm:text-[11px] text-slate-600 sm:text-slate-500 font-mono leading-relaxed">
+                                  <strong className="text-slate-800 sm:text-slate-700">ATP:</strong> {item.atp}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                ));
+              })()}
             </div>
           </div>
         </div>

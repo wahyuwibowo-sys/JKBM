@@ -20,6 +20,7 @@ import {
 } from '../../services/photoStorageService';
 import { generateRefleksiNarrative } from '../../utils/narrativeGenerator';
 import { compressImageToResult } from '../../utils/imageCompressor';
+import { groupCptpByElemen, resolveCanonicalElemen } from '../../utils/cptpGrouping';
 import { ResolvedPhotoImg } from '../common/ResolvedPhotoImg';
 import {
   Sparkles,
@@ -393,19 +394,9 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
   }, [cptpList, selectedMapelObj, mapel]);
 
   const matchingCPTPGroupedByElemen = useMemo(() => {
-    const groups = new Map<string, KurikulumCPTP[]>();
-    const sorted = [...matchingCPTP].sort((a, b) => {
-      const faseCmp = (a.fase || '').localeCompare(b.fase || '');
-      if (faseCmp !== 0) return faseCmp;
-      return (a.elemen || '').localeCompare(b.elemen || '');
-    });
-    for (const item of sorted) {
-      const elemenKey = (item.elemen || 'Umum / Lainnya').trim();
-      const bucket = groups.get(elemenKey) || [];
-      bucket.push(item);
-      groups.set(elemenKey, bucket);
-    }
-    return Array.from(groups.entries());
+    return groupCptpByElemen(matchingCPTP).map(
+      (g): [string, KurikulumCPTP[]] => [g.elemen, g.items]
+    );
   }, [matchingCPTP]);
 
   const getCptpLabel = (item: KurikulumCPTP): string => {
@@ -416,8 +407,12 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
   };
 
   const selectedCPTPItem = useMemo(() => {
-    if (!materi) return undefined;
-    return matchingCPTP.find((c) => getCptpLabel(c) === materi);
+    if (!materi.trim()) return undefined;
+    const normalized = materi.trim().toLowerCase();
+    return (
+      matchingCPTP.find((c) => getCptpLabel(c) === materi) ||
+      matchingCPTP.find((c) => getCptpLabel(c).trim().toLowerCase() === normalized)
+    );
   }, [materi, matchingCPTP]);
 
   const handleApplyCPTP = (item: KurikulumCPTP) => {
@@ -1135,7 +1130,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                           const labelText = getCptpLabel(item);
                           return (
                             <option key={item.id} value={labelText}>
-                              {labelText} (Fase {item.fase} · {item.elemen || 'Umum'})
+                              {labelText} (Fase {item.fase} · {elemenName})
                             </option>
                           );
                         })}
@@ -1152,8 +1147,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                         </span>
                         {selectedCPTPItem && (
                           <span className="text-[13px] sm:text-xs font-semibold text-blue-800">
-                            Fase {selectedCPTPItem.fase}
-                            {selectedCPTPItem.elemen ? ` · Elemen: ${selectedCPTPItem.elemen}` : ''}
+                            Fase {selectedCPTPItem.fase} · Elemen: {resolveCanonicalElemen(selectedCPTPItem)}
                           </span>
                         )}
                       </div>
@@ -1190,8 +1184,7 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                   </span>
                   {selectedCPTPItem && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/80 text-xs sm:text-[11px] font-semibold">
-                      Fase {selectedCPTPItem.fase}
-                      {selectedCPTPItem.elemen ? ` · Elemen: ${selectedCPTPItem.elemen}` : ''}
+                      Fase {selectedCPTPItem.fase} · Elemen: {resolveCanonicalElemen(selectedCPTPItem)}
                     </span>
                   )}
                 </div>
@@ -1793,13 +1786,14 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 overflow-y-auto divide-y divide-slate-200 sm:divide-slate-100 flex-1">
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
               {(() => {
                 const filteredModalItems = matchingCPTP.filter((item) => {
                   if (!cptpModalSearch.trim()) return true;
                   const q = cptpModalSearch.toLowerCase();
                   return (
                     (item.materi_pokok || '').toLowerCase().includes(q) ||
+                    resolveCanonicalElemen(item).toLowerCase().includes(q) ||
                     item.elemen.toLowerCase().includes(q) ||
                     item.cp.toLowerCase().includes(q) ||
                     item.tp.toLowerCase().includes(q)
@@ -1828,62 +1822,80 @@ export const FastJournalForm: React.FC<FastJournalFormProps> = ({
                   );
                 }
 
-                return filteredModalItems.map((item) => {
-                  const mapelObj = mapelList.find((m) => m.kode === item.mapel_kode);
-                  const labelText = getCptpLabel(item);
-                  const isCurrentSelected = materi === labelText;
-                  return (
-                    <div
-                      key={item.id}
-                      className={`py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-start justify-between gap-3 ${
-                        isCurrentSelected ? 'bg-blue-50/50 -mx-2 px-2 rounded-xl' : ''
-                      }`}
-                    >
-                      <div className="space-y-1.5 sm:space-y-1 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] sm:text-xs text-slate-600 sm:text-slate-500 leading-snug">
-                          <span className="font-bold sm:font-semibold text-blue-700">
-                            {mapelObj ? `${item.mapel_kode} · ${mapelObj.nama}` : item.mapel_kode}
-                          </span>
-                          <span aria-hidden="true">·</span>
-                          <span className="font-bold sm:font-semibold text-slate-800 sm:text-slate-700">Fase {item.fase}</span>
-                          {item.elemen && (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span className="font-medium text-slate-700">Elemen: {item.elemen}</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="text-base sm:text-sm font-bold text-slate-950 leading-snug">
-                          {labelText}
-                        </div>
-                        {item.tp && (
-                          <p className="text-sm sm:text-xs text-slate-700 sm:text-slate-600 line-clamp-3 sm:line-clamp-2 leading-relaxed">
-                            {item.tp}
-                          </p>
-                        )}
-                      </div>
+                const groupedModalItems = groupCptpByElemen(filteredModalItems);
 
-                      <button
-                        type="button"
-                        onClick={() => handleApplyCPTP(item)}
-                        className={`min-h-[44px] sm:min-h-0 w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-sm sm:text-xs font-bold sm:font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
-                          isCurrentSelected
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
-                      >
-                        {isCurrentSelected ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                            <span>Terpilih</span>
-                          </>
-                        ) : (
-                          <span>Pilih Materi</span>
-                        )}
-                      </button>
+                return groupedModalItems.map((group) => (
+                  <div key={group.elemen} className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-blue-50/80 border border-blue-200/70">
+                      <span className="text-sm sm:text-xs font-extrabold text-blue-950">
+                        Elemen: {group.elemen}
+                      </span>
+                      <span className="text-xs font-semibold text-blue-700 shrink-0 tabular-nums">
+                        {group.items.length} Materi
+                      </span>
                     </div>
-                  );
-                });
+
+                    <div className="divide-y divide-slate-200 sm:divide-slate-100 border border-slate-200 rounded-xl px-3.5 sm:px-4 bg-white">
+                      {group.items.map((item) => {
+                        const mapelObj = mapelList.find((m) => m.kode === item.mapel_kode);
+                        const labelText = getCptpLabel(item);
+                        const isCurrentSelected =
+                          materi.trim().toLowerCase() === labelText.trim().toLowerCase();
+                        return (
+                          <div
+                            key={item.id}
+                            className={`py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-3 ${
+                              isCurrentSelected ? 'bg-blue-50/50 -mx-2 px-2 rounded-xl' : ''
+                            }`}
+                          >
+                            <div className="space-y-1.5 sm:space-y-1 flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] sm:text-xs text-slate-600 sm:text-slate-500 leading-snug">
+                                <span className="font-bold sm:font-semibold text-blue-700">
+                                  {mapelObj ? `${item.mapel_kode} · ${mapelObj.nama}` : item.mapel_kode}
+                                </span>
+                                <span aria-hidden="true">·</span>
+                                <span className="font-bold sm:font-semibold text-slate-800 sm:text-slate-700">
+                                  Fase {item.fase}
+                                </span>
+                                <span aria-hidden="true">·</span>
+                                <span className="font-medium text-slate-700">
+                                  Elemen: {group.elemen}
+                                </span>
+                              </div>
+                              <div className="text-base sm:text-sm font-bold text-slate-950 leading-snug">
+                                {labelText}
+                              </div>
+                              {item.tp && (
+                                <p className="text-sm sm:text-xs text-slate-700 sm:text-slate-600 line-clamp-3 sm:line-clamp-2 leading-relaxed">
+                                  {item.tp}
+                                </p>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleApplyCPTP(item)}
+                              className={`min-h-[44px] sm:min-h-0 w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-sm sm:text-xs font-bold sm:font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
+                                isCurrentSelected
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                              }`}
+                            >
+                              {isCurrentSelected ? (
+                                <>
+                                  <CheckCircle2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                                  <span>Terpilih</span>
+                                </>
+                              ) : (
+                                <span>Pilih Materi</span>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
               })()}
             </div>
 
